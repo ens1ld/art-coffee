@@ -9,7 +9,7 @@ export default function NotAuthorizedPage() {
       <div className="text-center">
         <h1 className="text-4xl font-bold text-primary mb-4">Access Denied</h1>
         <p className="text-secondary mb-8">
-          You don't have permission to access this page.
+          You don&apos;t have permission to access this page.
         </p>
         <button
           onClick={() => router.push('/')}
