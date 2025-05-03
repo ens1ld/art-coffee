@@ -474,8 +474,8 @@ export default function OrderPage() {
                           }}
                         >
                           Customize
-                        </button>
-                      </div>
+            </button>
+          </div>
                     </div>
                   ))}
                 </div>
@@ -552,8 +552,8 @@ export default function OrderPage() {
                           </button>
                         </div>
                       </div>
-                    ))}
-                  </div>
+        ))}
+      </div>
                   
                   <div className="border-t border-border pt-4">
                     <div className="flex justify-between mb-2">
