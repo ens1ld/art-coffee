@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useProfile } from '@/components/ProfileFetcher';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -22,7 +23,7 @@ export default function Navigation() {
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex space-x-6">
+        <nav className="hidden md:flex space-x-6 items-center">
           <Link href="/" className="text-amber-900 hover:text-amber-700">
             Home
           </Link>
@@ -64,8 +65,11 @@ export default function Navigation() {
           )}
         </nav>
 
-        {/* Authentication Button */}
-        <div className="hidden md:block">
+        {/* Right side items */}
+        <div className="hidden md:flex items-center space-x-4">
+          <LanguageSwitcher />
+          
+          {/* Authentication Button */}
           {!loading && user ? (
             <div className="flex items-center space-x-2">
               <Link href="/profile" className="text-amber-900 hover:text-amber-700 mr-2">
@@ -145,6 +149,10 @@ export default function Navigation() {
                 Superadmin
               </Link>
             )}
+            
+            <div className="py-2">
+              <LanguageSwitcher />
+            </div>
             
             {!loading && user ? (
               <>
