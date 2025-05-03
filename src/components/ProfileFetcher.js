@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -20,7 +20,7 @@ export default function ProfileFetcher({ children }) {
   const router = useRouter();
 
   // Function to create a profile for a user
-  async function createProfile(userId, userEmail) {
+  const createProfile = useCallback(async (userId, userEmail) => {
     try {
       console.log('Creating profile for user:', userId);
       
@@ -31,8 +31,8 @@ export default function ProfileFetcher({ children }) {
           email: userEmail,
           role: 'user',
           approved: true,
-          created_at: new Date(),
-          updated_at: new Date()
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .select('*')
         .single();
@@ -48,10 +48,10 @@ export default function ProfileFetcher({ children }) {
       console.error('Failed to create profile:', err);
       throw err;
     }
-  }
+  }, []);
 
   // Function to fetch a user's profile
-  async function fetchProfile(userId) {
+  const fetchProfile = useCallback(async (userId) => {
     try {
       console.log('Fetching profile for user:', userId);
       const { data: profile, error: profileError } = await supabase
@@ -63,25 +63,36 @@ export default function ProfileFetcher({ children }) {
       if (profileError) {
         // If no profile found, try to create one
         if (profileError.code === 'PGRST116') {
+          console.log('Profile not found in fetchProfile, attempting to create one');
           // Get the user email first
-          const { data: userData } = await supabase.auth.getUser();
+          const { data: userData, error: userError } = await supabase.auth.getUser();
+          if (userError) {
+            console.error('Error getting user data:', userError);
+            throw userError;
+          }
+          
           if (userData && userData.user) {
             return await createProfile(userId, userData.user.email);
+          } else {
+            throw new Error('Cannot create profile: User data is missing');
           }
         }
+        console.error('Error fetching profile:', profileError);
         throw profileError;
       }
       
+      console.log('Profile fetched successfully:', profile);
       return profile;
     } catch (err) {
-      console.error('Error fetching profile:', err);
+      console.error('Error in fetchProfile:', err);
       throw err;
     }
-  }
+  }, [createProfile]);
 
   // Function to refresh user and profile data
-  async function refreshUserAndProfile() {
+  const refreshUserAndProfile = useCallback(async () => {
     try {
+      console.log('Refreshing user and profile data');
       setLoading(true);
       setError(null);
       
@@ -89,23 +100,27 @@ export default function ProfileFetcher({ children }) {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
+        console.error('Session error in refreshUserAndProfile:', sessionError);
         throw sessionError;
       }
       
       if (!session) {
+        console.log('No session found, clearing user and profile');
         setUser(null);
         setProfile(null);
         return;
       }
       
+      console.log('Session found, setting user:', session.user.email);
       setUser(session.user);
       
       // Fetch or create profile
       try {
         const profileData = await fetchProfile(session.user.id);
+        console.log('Setting profile data:', profileData);
         setProfile(profileData);
       } catch (profileError) {
-        console.error('Error in profile handling:', profileError);
+        console.error('Error in profile handling during refresh:', profileError);
         setError('Failed to retrieve user profile. Please try again.');
       }
     } catch (err) {
@@ -114,9 +129,10 @@ export default function ProfileFetcher({ children }) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [fetchProfile]);
 
   useEffect(() => {
+    console.log('ProfileFetcher initialized');
     // Initial data fetch
     refreshUserAndProfile();
     
@@ -126,13 +142,16 @@ export default function ProfileFetcher({ children }) {
       
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (session) {
+          console.log('Setting user in auth state change:', session.user.email);
           setUser(session.user);
           try {
             const profileData = await fetchProfile(session.user.id);
+            console.log('Setting profile in auth state change:', profileData);
             setProfile(profileData);
             
             // Redirect to profile page on successful sign-in
             if (event === 'SIGNED_IN') {
+              console.log('Redirecting after sign-in based on role:', profileData.role);
               if (profileData.role === 'admin' && profileData.approved) {
                 router.push('/admin');
               } else if (profileData.role === 'superadmin') {
@@ -147,12 +166,14 @@ export default function ProfileFetcher({ children }) {
           }
         }
       } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out, clearing user and profile');
         setUser(null);
         setProfile(null);
       }
     });
     
     return () => {
+      console.log('Cleaning up ProfileFetcher');
       if (authListener && authListener.subscription) {
         authListener.subscription.unsubscribe();
       }

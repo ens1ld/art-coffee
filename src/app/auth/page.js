@@ -13,7 +13,7 @@ function AuthContent() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [role, setRole] = useState('user');
+  const [isAdminSignUp, setIsAdminSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -21,13 +21,36 @@ function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTimeout = useRef(null);
+  const [debugInfo, setDebugInfo] = useState(null);
 
   // Get redirect path from URL, fallback to /profile
   const redirectTo = searchParams.get('redirectTo') || '/profile';
 
+  // Debug function
+  const showDebugInfo = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: profileData } = session ? 
+        await supabase.from('profiles').select('*').eq('id', session.user.id).single() :
+        { data: null };
+      
+      setDebugInfo({
+        sessionExists: !!session,
+        userId: session?.user?.id || 'No user ID',
+        userEmail: session?.user?.email || 'No email',
+        profileExists: !!profileData,
+        profileData: profileData || 'No profile data'
+      });
+    } catch (error) {
+      setDebugInfo({error: error.message});
+    }
+  };
+
   // When user or profile changes, check if we can redirect
   useEffect(() => {
     if (user && profile) {
+      console.log('User authenticated, profile data:', profile);
+      
       // Clear any existing timeout
       if (redirectTimeout.current) {
         clearTimeout(redirectTimeout.current);
@@ -44,7 +67,7 @@ function AuthContent() {
     }
   }, [user, profile, router]);
 
-  // In case redirect doesn't happen automatically after 3 seconds
+  // In case redirect doesn't happen automatically after 5 seconds
   useEffect(() => {
     return () => {
       if (redirectTimeout.current) {
@@ -66,52 +89,67 @@ function AuthContent() {
     setLoading(true);
     
     try {
+      const role = isAdminSignUp ? 'admin' : 'user';
+      
+      console.log(`Signing up as ${role}...`);
+      
       // Sign up the user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            role: role, // Store role in user metadata
+            role: role,
           },
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         },
       });
       
       if (authError) throw authError;
       
+      console.log('Auth signup successful:', authData);
+      
       // Create a profile for the new user
       if (authData.user) {
         try {
-          const { error: profileError } = await supabase
+          console.log('Creating profile with role:', role);
+          
+          const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .insert({
               id: authData.user.id,
               email: authData.user.email,
               role: role,
               approved: role === 'admin' ? false : true, // Admins need approval
-              created_at: new Date(),
-              updated_at: new Date()
-            });
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
           
-          if (profileError) throw profileError;
+          if (profileError) {
+            console.error('Profile creation error:', profileError);
+            throw profileError;
+          }
+          
+          console.log('Profile created successfully:', profileData);
         } catch (profileError) {
           console.error('Error creating profile:', profileError);
           // Continue anyway as middleware will create profile if needed
         }
       }
       
-      // Refresh the user and profile data
-      await refreshUserAndProfile();
+      // Show confirmation message
+      setMessage(`Account created! ${authData.user.identities?.length === 0 ? 'You can now sign in.' : 'Check your email for the confirmation link.'}`);
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+      setIsSignUp(false);
+      setIsAdminSignUp(false);
       
-      setMessage('Account created! Check your email for the confirmation link.');
-      
-      // Set a timeout to redirect in case the auth state listener doesn't trigger
-      redirectTimeout.current = setTimeout(() => {
-        router.push('/profile');
-      }, 3000);
     } catch (error) {
-      setError(error.message || 'An error occurred during sign up');
       console.error('Sign up error:', error);
+      setError(error.message || 'An error occurred during sign up');
     } finally {
       setLoading(false);
     }
@@ -124,35 +162,91 @@ function AuthContent() {
     setLoading(true);
     
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      console.log('Signing in with email:', email);
+      
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (authError) throw authError;
       
-      // Refresh user and profile data
+      console.log('Sign in successful:', data);
+      
+      // Fetch profile to check if it exists
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+      
+      // If profile doesn't exist, create one
+      if (profileError && profileError.code === 'PGRST116') {
+        console.log('Profile not found, creating one...');
+        
+        try {
+          const { data: newProfile, error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              email: data.user.email,
+              role: 'user',
+              approved: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+          
+          if (insertError) throw insertError;
+          
+          console.log('New profile created during signin:', newProfile);
+          
+          // Force direct navigation based on role
+          if (newProfile.role === 'admin' && newProfile.approved) {
+            window.location.href = '/admin';
+            return;
+          } else if (newProfile.role === 'superadmin') {
+            window.location.href = '/superadmin';
+            return;
+          } else {
+            window.location.href = '/profile';
+            return;
+          }
+        } catch (createError) {
+          console.error('Error creating profile during signin:', createError);
+        }
+      } else if (profileError) {
+        console.error('Error fetching profile:', profileError);
+      } else if (profileData) {
+        console.log('Profile found:', profileData);
+        
+        // Force direct navigation based on role
+        if (profileData.role === 'admin' && profileData.approved) {
+          window.location.href = '/admin';
+          return;
+        } else if (profileData.role === 'superadmin') {
+          window.location.href = '/superadmin';
+          return;
+        } else {
+          window.location.href = '/profile';
+          return;
+        }
+      }
+      
+      // Refresh user and profile data and redirect through context
       await refreshUserAndProfile();
       
       setMessage('Signed in successfully! Redirecting...');
       
-      // Set a timeout to redirect in case the auth state listener doesn't trigger
+      // Set a fallback timeout to force redirect in case the auth state listener doesn't trigger
       redirectTimeout.current = setTimeout(() => {
-        if (profile) {
-          if (profile.role === 'admin' && profile.approved) {
-            router.push('/admin');
-          } else if (profile.role === 'superadmin') {
-            router.push('/superadmin');
-          } else {
-            router.push('/profile');
-          }
-        } else {
-          router.push('/profile');
-        }
+        console.log('Forcing redirect...');
+        window.location.href = '/profile';
       }, 3000);
     } catch (error) {
-      setError(error.message || 'Failed to sign in');
       console.error('Sign in error:', error);
+      setError(error.message || 'Failed to sign in');
     } finally {
       setLoading(false);
     }
@@ -179,6 +273,24 @@ function AuthContent() {
                 Go to Profile Now
               </button>
             </div>
+            
+            {/* Debug button */}
+            <div className="mt-4 text-center">
+              <button 
+                onClick={showDebugInfo}
+                className="text-xs text-gray-500 underline"
+              >
+                Debug Auth
+              </button>
+            </div>
+            
+            {debugInfo && (
+              <div className="mt-4 p-3 bg-gray-100 rounded text-xs text-left">
+                <pre className="whitespace-pre-wrap overflow-auto max-h-40">
+                  {JSON.stringify(debugInfo, null, 2)}
+                </pre>
+              </div>
+            )}
           </div>
         </main>
         <Footer />
@@ -194,10 +306,12 @@ function AuthContent() {
             <div className="text-center mb-6">
               <Image src="/logo.png" alt="Art Coffee Logo" width={80} height={80} className="mx-auto" />
               <h1 className="text-2xl font-bold text-amber-900 mt-4">
-                {isSignUp ? 'Create an Account' : 'Welcome Back'}
+                {!isSignUp ? 'Welcome Back' : 
+                 isAdminSignUp ? 'Create Admin Account' : 'Create Customer Account'}
               </h1>
               <p className="text-gray-600 mt-2">
-                {isSignUp ? 'Join Art Coffee today' : 'Sign in to your account'}
+                {!isSignUp ? 'Sign in to your account' : 
+                 isAdminSignUp ? 'Admin accounts require approval' : 'Join Art Coffee today'}
               </p>
             </div>
 
@@ -245,43 +359,28 @@ function AuthContent() {
               </div>
 
               {isSignUp && (
-                <>
-                  <div className="mb-4">
-                    <label htmlFor="confirmPassword" className="block text-gray-700 mb-2">
-                      Confirm Password
-                    </label>
-                    <input
-                      id="confirmPassword"
-                      type="password"
-                      required
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      disabled={loading}
-                    />
-                  </div>
+                <div className="mb-4">
+                  <label htmlFor="confirmPassword" className="block text-gray-700 mb-2">
+                    Confirm Password
+                  </label>
+                  <input
+                    id="confirmPassword"
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    disabled={loading}
+                  />
+                </div>
+              )}
 
-                  <div className="mb-4">
-                    <label htmlFor="role" className="block text-gray-700 mb-2">
-                      Account Type
-                    </label>
-                    <select
-                      id="role"
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      disabled={loading}
-                    >
-                      <option value="user">Customer</option>
-                      <option value="admin">Admin (requires approval)</option>
-                    </select>
-                    {role === 'admin' && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Admin accounts require superadmin approval before access is granted.
-                      </p>
-                    )}
+              {isAdminSignUp && (
+                <div className="mb-4">
+                  <div className="p-3 bg-amber-50 rounded-md text-sm text-amber-800">
+                    <p><strong>Note:</strong> Admin accounts require approval from a superadmin before accessing admin features.</p>
                   </div>
-                </>
+                </div>
               )}
 
               <button
@@ -301,17 +400,64 @@ function AuthContent() {
             </form>
 
             <div className="mt-6 text-center">
-              <button
-                onClick={() => {
-                  setIsSignUp(!isSignUp);
-                  setError('');
-                  setMessage('');
-                }}
-                className="text-amber-800 hover:text-amber-700"
+              {!isSignUp ? (
+                <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      setIsSignUp(true);
+                      setIsAdminSignUp(false);
+                      setError('');
+                      setMessage('');
+                    }}
+                    className="text-amber-800 hover:text-amber-700"
+                  >
+                    Don&apos;t have an account? Sign up as Customer
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setIsSignUp(true);
+                      setIsAdminSignUp(true);
+                      setError('');
+                      setMessage('');
+                    }}
+                    className="block w-full text-amber-800 hover:text-amber-700"
+                  >
+                    Sign up as Admin
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setIsSignUp(false);
+                    setIsAdminSignUp(false);
+                    setError('');
+                    setMessage('');
+                  }}
+                  className="text-amber-800 hover:text-amber-700"
+                >
+                  Already have an account? Sign In
+                </button>
+              )}
+            </div>
+            
+            {/* Debug button */}
+            <div className="mt-4 text-center">
+              <button 
+                onClick={showDebugInfo}
+                className="text-xs text-gray-500 underline"
               >
-                {isSignUp ? 'Already have an account? Sign In' : "Don&apos;t have an account? Sign Up"}
+                Debug Auth
               </button>
             </div>
+            
+            {debugInfo && (
+              <div className="mt-4 p-3 bg-gray-100 rounded text-xs text-left">
+                <pre className="whitespace-pre-wrap overflow-auto max-h-40">
+                  {JSON.stringify(debugInfo, null, 2)}
+                </pre>
+              </div>
+            )}
           </div>
         </div>
       </main>

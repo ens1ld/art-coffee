@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 -- Enable Row Level Security (RLS)
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
--- Create profiles for any users that don't have one
+-- Add ON CONFLICT DO NOTHING to avoid errors if records already exist
 INSERT INTO profiles (id, email, role, approved, created_at, updated_at)
 SELECT
   au.id,
@@ -25,7 +25,8 @@ SELECT
   NOW() as updated_at
 FROM auth.users au
 LEFT JOIN profiles p ON au.id = p.id
-WHERE p.id IS NULL;
+WHERE p.id IS NULL
+ON CONFLICT (id) DO NOTHING;
 
 -- Drop existing policies to avoid conflicts
 DROP POLICY IF EXISTS "Users can see their own profile" ON profiles;
@@ -64,12 +65,24 @@ CREATE POLICY "Superadmins can update all profiles"
     )
   );
 
--- Set up trigger function to create profiles automatically
+-- Allow inserting profiles for any authenticated user
+CREATE POLICY "Allow inserting profiles"
+  ON profiles FOR INSERT
+  WITH CHECK (auth.uid() = id OR 
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid() AND (role = 'admin' OR role = 'superadmin')
+    )
+  );
+
+-- Modify the trigger function to properly handle new users and conflicts
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO profiles (id, email, role, approved)
-  VALUES (NEW.id, NEW.email, 'user', TRUE);
+  VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'role', 'user'), 
+         CASE WHEN COALESCE(NEW.raw_user_meta_data->>'role', 'user') = 'admin' THEN FALSE ELSE TRUE END)
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
