@@ -24,10 +24,10 @@ export default function GiftCardPage() {
   }, []);
 
   const giftCardDesigns = [
-    { id: 0, name: "Classic Coffee", image: "/src/components/images/gift-cards/1.png", color: "bg-[#8B4513]" },
-    { id: 1, name: "Morning Brew", image: "/src/components/images/gift-cards/2.png", color: "bg-[#A67C52]" },
-    { id: 2, name: "Coffee Beans", image: "/src/components/images/gift-cards/3.png", color: "bg-[#5A4020]" },
-    { id: 3, name: "Premium Gold", image: "/src/components/images/gift-cards/4.png", color: "bg-[#E3A95C]" },
+    { id: 0, name: "Classic Coffee", image: "/public/images/gift-cards/1.png", color: "bg-[#8B4513]" },
+    { id: 1, name: "Morning Brew", image: "/public/images/gift-cards/2.png", color: "bg-[#A67C52]" },
+    { id: 2, name: "Coffee Beans", image: "/public/images/gift-cards/3.png", color: "bg-[#5A4020]" },
+    { id: 3, name: "Premium Gold", image: "/public/images/gift-cards/4.png", color: "bg-[#E3A95C]" },
   ];
 
   const amountOptions = [15, 25, 50, 100];
