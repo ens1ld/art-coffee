@@ -78,29 +78,92 @@ function AuthContent() {
 
   const handleSignUp = async (e) => {
     e.preventDefault();
+    
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setError("Passwords don't match");
+      return;
+    }
+    
+    // Validate password length
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+    
     setError('');
     setMessage('');
     setLoading(true);
 
     try {
+      console.log('Starting sign up process...');
       const role = isAdminSignUp ? 'admin' : 'user';
+      
+      // Sign up with Supabase Auth
+      console.log(`Signing up user with email: ${email}, role: ${role}`);
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { role },
+          data: { role }, // Store role in user metadata
           emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
+      
+      console.log('Sign up response:', { 
+        success: !!authData?.user, 
+        userId: authData?.user?.id,
+        identities: authData?.user?.identities?.length,
+        error: authError?.message || null 
+      });
+      
       if (authError) throw authError;
-      setMessage('Account created! Check your email for the confirmation link.');
+      
+      if (!authData?.user) {
+        console.error('No user data returned from sign up');
+        throw new Error('No user data returned from sign up');
+      }
+      
+      // Wait briefly to allow trigger to create profile
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Try to verify the profile was created
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single();
+          
+        if (profile) {
+          console.log('Profile created successfully:', profile.id);
+        } else if (profileError) {
+          console.log('Profile check error (may still be created by trigger):', profileError.message);
+        }
+      } catch (e) {
+        console.log('Error checking profile (non-critical):', e.message);
+      }
+      
+      setMessage(`Account created! ${authData.user.identities?.length === 0 
+        ? 'You can now sign in.' 
+        : 'Check your email for the confirmation link.'}`);
+        
       setIsSignUp(false);
       setIsAdminSignUp(false);
       setEmail('');
       setPassword('');
       setConfirmPassword('');
     } catch (error) {
-      setError(error.message || 'An error occurred during sign up');
+      console.error('Sign up error:', error);
+      setError(`Sign-up failed: ${error.message || 'Database error saving new user'}`);
+      
+      // Add debug info
+      setDebugInfo({
+        errorType: error.name,
+        errorMessage: error.message,
+        errorStack: error.stack,
+        timestamp: new Date().toISOString()
+      });
     } finally {
       setLoading(false);
     }
@@ -113,25 +176,84 @@ function AuthContent() {
     setLoading(true);
 
     try {
+      console.log('Starting sign in process...');
       const { data: signInData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
+      console.log('Sign in response:', { 
+        success: !!signInData?.user, 
+        userId: signInData?.user?.id,
+        error: authError?.message || null 
+      });
+      
       if (authError) throw authError;
       if (!signInData?.user) throw new Error('No user returned from Supabase');
 
       // Fetch profile using session user id
+      console.log('Fetching profile for user:', signInData.user.id);
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', signInData.user.id)
         .single();
-      if (profileError || !profile) {
-        setError('Profile not found. Please contact support.');
-        return;
+        
+      console.log('Profile fetch result:', { 
+        found: !!profile, 
+        error: profileError?.message || null 
+      });
+        
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        throw new Error('Failed to retrieve user profile. Please try again.');
+      }
+      
+      if (!profile) {
+        console.error('No profile found for user ID:', signInData.user.id);
+        
+        // Try to create profile (fallback if trigger didn't work)
+        try {
+          console.log('Attempting to create missing profile...');
+          const role = signInData.user.user_metadata?.role || 'user';
+          
+          const { data: newProfile, error: insertError } = await supabase
+            .from('profiles')
+            .insert([{ 
+              id: signInData.user.id, 
+              email: signInData.user.email,
+              role: role,
+              approved: role === 'admin' ? false : true
+            }])
+            .select()
+            .single();
+            
+          if (insertError) {
+            console.error('Failed to create profile:', insertError);
+            throw new Error('Failed to create user profile');
+          }
+          
+          console.log('Created new profile:', newProfile);
+          
+          // Use this profile for redirection
+          if (newProfile) {
+            // Redirect based on newly created profile
+            if (newProfile.role === 'admin' && newProfile.approved) {
+              window.location.href = '/admin';
+            } else if (newProfile.role === 'superadmin') {
+              window.location.href = '/superadmin';
+            } else {
+              window.location.href = '/profile';
+            }
+            return;
+          }
+        } catch (e) {
+          console.error('Error creating profile:', e);
+          throw new Error('Failed to set up user profile');
+        }
       }
 
-      // Redirect by role
+      // Redirect by role if profile exists
       if (profile.role === 'admin' && profile.approved) {
         window.location.href = '/admin';
       } else if (profile.role === 'superadmin') {
@@ -140,7 +262,16 @@ function AuthContent() {
         window.location.href = '/profile';
       }
     } catch (error) {
+      console.error('Sign in error:', error);
       setError(error.message || 'Failed to sign in');
+      
+      // Add debug info
+      setDebugInfo({
+        errorType: error.name,
+        errorMessage: error.message,
+        errorStack: error.stack,
+        timestamp: new Date().toISOString()
+      });
     } finally {
       setLoading(false);
     }

@@ -64,6 +64,19 @@ export default function ProfileFetcher({ children }) {
         // If no profile found, try to create one
         if (profileError.code === 'PGRST116') {
           console.log('Profile not found in fetchProfile, attempting to create one');
+          
+          // Retry profile fetch first, as it may have been created by a trigger
+          const { data: retryProfile, error: retryError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+            
+          if (!retryError && retryProfile) {
+            console.log('Profile found on retry:', retryProfile);
+            return retryProfile;
+          }
+          
           // Get the user email first
           const { data: userData, error: userError } = await supabase.auth.getUser();
           if (userError) {
@@ -72,7 +85,38 @@ export default function ProfileFetcher({ children }) {
           }
           
           if (userData && userData.user) {
-            return await createProfile(userId, userData.user.email);
+            // Check if a profile might already exist (to prevent race conditions)
+            const { data: existingProfiles, error: checkError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', userId);
+              
+            if (!checkError && existingProfiles?.length > 0) {
+              console.log('Profile found through list query:', existingProfiles[0]);
+              return existingProfiles[0];
+            }
+            
+            try {
+              // Create new profile
+              return await createProfile(userId, userData.user.email);
+            } catch (createError) {
+              // If creation fails, try one more time to get the profile
+              // It might have been created by a trigger
+              console.log('Profile creation failed, checking if it exists now');
+              const { data: finalCheck, error: finalError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single();
+                
+              if (!finalError && finalCheck) {
+                console.log('Profile found on final check:', finalCheck);
+                return finalCheck;
+              }
+              
+              // Truly failed
+              throw createError;
+            }
           } else {
             throw new Error('Cannot create profile: User data is missing');
           }
