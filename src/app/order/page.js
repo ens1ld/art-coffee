@@ -149,32 +149,37 @@ export default function OrderPage() {
       }
       
       try {
+        console.log('Loading favorites for user:', user.id);
+        
         const { data, error } = await supabase
           .from('favorites')
-          .select('*')
+          .select('id, product_id')
           .eq('user_id', user.id);
           
         if (error) {
           // If it's a 404, the table might not exist yet
           if (error.code === '404') {
-            console.warn('Favorites table may not exist yet');
+            console.warn('Favorites table may not exist yet:', error);
           } else {
             console.error('Error loading favorites:', error);
           }
+          setFavorites({});
           return;
         }
         
-        // Create a map of product_id -> favorite for easy lookup
+        // Create a map of product_id -> favorite.id for easy lookup
         const favMap = {};
         if (data) {
           data.forEach(fav => {
             favMap[fav.product_id] = fav.id;
           });
+          console.log('Loaded favorites map:', favMap);
         }
         
         setFavorites(favMap);
       } catch (err) {
         console.error('Error loading favorites:', err);
+        setFavorites({});
       }
     };
     

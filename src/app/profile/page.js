@@ -53,26 +53,50 @@ export default function ProfilePage() {
       try {
         // Fetch favorites from 'favorites' table if it exists
         try {
-          const { data: favoritesData, error: favoritesError } = await supabase
+          console.log('Attempting to fetch favorites for user:', user.id);
+          
+          // First attempt to get just the favorites to check if table exists
+          const { data: favoritesCheck, error: checkError } = await supabase
             .from('favorites')
-            .select('*, products(*)')
-            .eq('user_id', user.id);
+            .select('id')
+            .limit(1);
             
-          if (favoritesError) {
-            // If table doesn't exist or other error
-            if (favoritesError.code === '404') {
-              console.warn('Favorites table may not exist yet');
+          if (checkError) {
+            if (checkError.code === '404') {
+              console.warn('Favorites table may not exist yet:', checkError);
+              setFavorites([]);
             } else {
-              console.error('Error loading favorites:', favoritesError);
+              console.error('Error checking favorites table:', checkError);
+              setFavorites([]);
             }
-            // Set to empty array to avoid undefined errors
-            setFavorites([]);
           } else {
-            setFavorites(favoritesData || []);
+            // If favorites table exists, get user's favorites with product details
+            const { data: favoritesData, error: favoritesError } = await supabase
+              .from('favorites')
+              .select(`
+                id, 
+                product_id,
+                products:product_id (
+                  id, 
+                  name, 
+                  price, 
+                  category,
+                  description,
+                  image_url
+                )
+              `)
+              .eq('user_id', user.id);
+              
+            if (favoritesError) {
+              console.error('Error loading favorites with products:', favoritesError);
+              setFavorites([]);
+            } else {
+              console.log('Successfully loaded favorites:', favoritesData?.length || 0);
+              setFavorites(favoritesData || []);
+            }
           }
         } catch (favError) {
-          console.error('Error loading favorites:', favError);
-          // Set to empty array to avoid undefined errors
+          console.error('Exception loading favorites:', favError);
           setFavorites([]);
         }
         
@@ -118,6 +142,7 @@ export default function ProfilePage() {
 
   const handleRemoveFavorite = async (favoriteId) => {
     try {
+      console.log('Removing favorite:', favoriteId);
       const { error } = await supabase
         .from('favorites')
         .delete()
@@ -128,6 +153,7 @@ export default function ProfilePage() {
         if (error.code === '404') {
           throw new Error('Favorites feature is not available right now');
         }
+        console.error('Delete favorite error:', error);
         throw error;
       }
       
@@ -389,7 +415,7 @@ export default function ProfilePage() {
                               {favorite.products?.image_url ? (
                                 <Image
                                   src={favorite.products.image_url}
-                                  alt={favorite.products.name}
+                                  alt={favorite.products.name || 'Coffee product'}
                                   fill
                                   className="object-cover"
                                 />
@@ -400,8 +426,8 @@ export default function ProfilePage() {
                               )}
                             </div>
                             <div>
-                              <p className="font-medium">{favorite.products?.name || 'Product'}</p>
-                              <p className="text-xs text-gray-600">{favorite.products?.category || 'Category'}</p>
+                              <p className="font-medium">{favorite.products?.name || 'Coffee product'}</p>
+                              <p className="text-xs text-gray-600">{favorite.products?.category || 'Coffee'}</p>
                             </div>
                           </div>
                           <button 
@@ -452,7 +478,7 @@ export default function ProfilePage() {
                         {favorite.products?.image_url ? (
                           <Image
                             src={favorite.products.image_url}
-                            alt={favorite.products.name}
+                            alt={favorite.products.name || 'Coffee product'}
                             fill
                             className="object-cover"
                           />
@@ -462,10 +488,10 @@ export default function ProfilePage() {
                           </div>
                         )}
                       </div>
-                      <h3 className="font-semibold text-amber-900 mb-1">{favorite.products?.name || 'Product'}</h3>
-                      <p className="text-sm text-gray-600 mb-3">{favorite.products?.category || 'Category'}</p>
+                      <h3 className="font-semibold text-amber-900 mb-1">{favorite.products?.name || 'Coffee product'}</h3>
+                      <p className="text-sm text-gray-600 mb-3">{favorite.products?.category || 'Coffee'}</p>
                       <div className="flex justify-between items-center">
-                        <span className="font-medium">${favorite.products?.price ? favorite.products.price.toFixed(2) : '0.00'}</span>
+                        <span className="font-medium">${favorite.products?.price ? parseFloat(favorite.products.price).toFixed(2) : '0.00'}</span>
                         <div className="space-x-2">
                           <button 
                             onClick={() => handleRemoveFavorite(favorite.id)}
@@ -474,7 +500,7 @@ export default function ProfilePage() {
                             Remove
                           </button>
                           <Link
-                            href={`/order?product=${favorite.products?.id}`}
+                            href={`/order?product=${favorite.product_id}`}
                             className="px-3 py-1 bg-amber-800 text-white rounded hover:bg-amber-700 text-sm transition-colors"
                           >
                             Order
