@@ -24,6 +24,14 @@ export default function AuthCallbackPage() {
           return;
         }
 
+        // Check if this is from email verification
+        const isEmailVerification = hashParams.type === 'email_confirmation' || 
+                                   window.location.href.includes('email_confirmation');
+        
+        if (isEmailVerification) {
+          console.log('Processing email verification...');
+        }
+
         // Check current session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
@@ -48,9 +56,33 @@ export default function AuthCallbackPage() {
           .eq('id', session.user.id)
           .single();
 
-        if (profileError) {
+        // If profile doesn't exist, create one
+        if (profileError && profileError.code === 'PGRST116') {
+          console.log('Profile not found in callback, creating one...');
+          
+          // Create a new profile for the user
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert([{ 
+              id: session.user.id, 
+              email: session.user.email,
+              role: session.user.user_metadata.role || 'user',
+              approved: session.user.user_metadata.role === 'admin' ? false : true
+            }]);
+            
+          if (insertError) {
+            console.error('Error creating profile in callback:', insertError);
+            setError('There was an error creating your user profile. Please try signing in again.');
+            setTimeout(() => router.push('/auth'), 3000);
+            return;
+          }
+          
+          // Redirect to homepage
+          router.push('/');
+          return;
+        } else if (profileError) {
           console.error('Auth callback profile error:', profileError);
-          // If no profile, still redirect to homepage
+          // If profile error, redirect to homepage
           router.push('/');
           return;
         }

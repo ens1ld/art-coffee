@@ -16,37 +16,34 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Trigger to automatically create a profile when a user signs up
-CREATE OR REPLACE FUNCTION public.handle_new_user() 
+-- Create a trigger to automatically create a profile when a new user signs up
+CREATE OR REPLACE FUNCTION handle_new_user() 
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, role, approved)
+  INSERT INTO profiles (id, email, role, approved)
   VALUES (
     NEW.id, 
-    NEW.email, 
+    NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'role', 'user'),
     CASE 
       WHEN COALESCE(NEW.raw_user_meta_data->>'role', 'user') = 'admin' THEN FALSE
       ELSE TRUE
     END
-  );
+  )
+  -- Add ON CONFLICT to handle cases where the profile might already exist
+  ON CONFLICT (id) DO NOTHING;
+  
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Check if trigger already exists before creating it
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger WHERE tgname = 'on_auth_user_created'
-  ) THEN
-    CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW
-    EXECUTE FUNCTION public.handle_new_user();
-  END IF;
-END
-$$;
+-- Make sure the trigger is dropped if it exists to avoid duplication
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+-- Create the trigger to run after a user is created
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
 -- Create policies for the profiles table
 

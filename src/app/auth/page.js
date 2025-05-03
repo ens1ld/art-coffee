@@ -189,7 +189,29 @@ export default function AuthPage() {
           .eq('id', data.user.id)
           .single();
 
-        if (profileError) {
+        // If profile doesn't exist, create one
+        if (profileError && profileError.code === 'PGRST116') {
+          console.log('Profile not found, creating one...');
+          
+          // Create a new profile for the user
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert([{ 
+              id: data.user.id, 
+              email: data.user.email,
+              role: 'user',
+              approved: true
+            }]);
+            
+          if (insertError) {
+            console.error('Error creating profile:', insertError);
+            throw new Error('Failed to create user profile. Please contact support.');
+          }
+          
+          // Redirect to default user page
+          router.push(getRedirectPath('user'));
+          return;
+        } else if (profileError) {
           console.error('Error fetching profile after signin:', profileError);
           throw new Error('Failed to retrieve user profile. Please try again.');
         }
