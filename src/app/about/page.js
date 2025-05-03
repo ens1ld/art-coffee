@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function AboutPage() {
   return (
@@ -31,7 +32,7 @@ export default function AboutPage() {
             Our Story
           </h1>
           <p className="text-xl text-secondary">
-            From bean to cup, we're passionate about crafting the perfect coffee experience
+            From bean to cup, we&apos;re passionate about crafting the perfect coffee experience
           </p>
         </div>
       </section>
@@ -50,17 +51,21 @@ export default function AboutPage() {
                 thriving community of coffee lovers.
               </p>
               <p className="text-secondary mb-4">
-                We believe that coffee is more than just a beverage - it's an art form. Each cup tells a 
+                We believe that coffee is more than just a beverage - it&apos;s an art form. Each cup tells a 
                 story, from the careful selection of beans to the precise brewing process. Our mission is 
                 to bring this art to life in every cup we serve.
               </p>
             </div>
             <div className="bg-card-bg border border-card-border rounded-xl p-6">
-              <img
-                src="/images/coffee-shop.jpg"
-                alt="Art Coffee Shop Interior"
-                className="w-full h-auto rounded-lg"
-              />
+              <div className="relative w-full h-64">
+                <Image
+                  src="/images/coffee-shop.jpg"
+                  alt="Art Coffee Shop Interior"
+                  fill
+                  className="object-cover rounded-lg"
+                  priority
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -82,7 +87,7 @@ export default function AboutPage() {
             <div className="bg-background border border-card-border rounded-xl p-6">
               <h3 className="text-xl font-semibold text-primary mb-4">Sustainability</h3>
               <p className="text-secondary">
-                We're committed to ethical sourcing and environmentally friendly practices throughout our supply chain.
+                We&apos;re committed to ethical sourcing and environmentally friendly practices throughout our supply chain.
               </p>
             </div>
             <div className="bg-background border border-card-border rounded-xl p-6">
@@ -115,7 +120,7 @@ export default function AboutPage() {
               <h3 className="text-xl font-semibold text-primary mb-2">Michael Chen</h3>
               <p className="text-secondary mb-2">Coffee Roaster</p>
               <p className="text-secondary text-sm">
-                Michael's expertise in roasting brings out the unique flavors in every bean we source.
+                Michael&apos;s expertise in roasting brings out the unique flavors in every bean we source.
               </p>
             </div>
             <div className="bg-card-bg border border-card-border rounded-xl p-6 text-center">

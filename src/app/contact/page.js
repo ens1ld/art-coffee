@@ -64,7 +64,7 @@ export default function ContactPage() {
             Get in Touch
           </h1>
           <p className="text-xl text-secondary">
-            We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+            We&apos;d love to hear from you. Send us a message and we&apos;ll respond as soon as possible.
           </p>
         </div>
       </section>
@@ -148,7 +148,7 @@ export default function ContactPage() {
                 </button>
                 {status === 'success' && (
                   <p className="text-green-500 text-center">
-                    Thank you for your message! We'll get back to you soon.
+                    Thank you for your message! We&apos;ll get back to you soon.
                   </p>
                 )}
               </form>
