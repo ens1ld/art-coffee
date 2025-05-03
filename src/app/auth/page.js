@@ -9,6 +9,7 @@ function AuthContent() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirectTo') || '/order';
@@ -44,6 +45,7 @@ function AuthContent() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     try {
@@ -51,9 +53,20 @@ function AuthContent() {
         const { data: { user }, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
         });
 
-        if (signUpError) throw signUpError;
+        if (signUpError) {
+          if (signUpError.message.includes('already registered')) {
+            throw new Error('This email is already registered. Please sign in instead.');
+          } else if (signUpError.message.includes('password')) {
+            throw new Error('Password must be at least 6 characters long.');
+          } else {
+            throw signUpError;
+          }
+        }
 
         if (user) {
           // Create profile with default 'user' role
@@ -65,9 +78,13 @@ function AuthContent() {
               role: 'user'
             }]);
 
-          if (profileError) throw profileError;
+          if (profileError) {
+            throw new Error('Failed to create user profile. Please try again.');
+          }
 
-          setError('Check your email for the confirmation link!');
+          setSuccess('Please check your email to confirm your account.');
+          setEmail('');
+          setPassword('');
         }
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -75,7 +92,15 @@ function AuthContent() {
           password,
         });
 
-        if (signInError) throw signInError;
+        if (signInError) {
+          if (signInError.message.includes('Invalid login credentials')) {
+            throw new Error('Invalid email or password. Please try again.');
+          } else if (signInError.message.includes('Email not confirmed')) {
+            throw new Error('Please confirm your email before signing in.');
+          } else {
+            throw signInError;
+          }
+        }
 
         // Redirect will be handled by the useEffect
       }
@@ -99,6 +124,12 @@ function AuthContent() {
           </div>
         )}
 
+        {success && (
+          <div className="mb-4 p-3 rounded bg-green-500 bg-opacity-20 text-green-500 text-sm">
+            {success}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-secondary mb-1">
@@ -109,7 +140,7 @@ function AuthContent() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 rounded border border-card-border bg-background text-foreground"
+              className="w-full px-3 py-2 rounded border border-card-border bg-background text-foreground focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
               required
             />
           </div>
@@ -123,15 +154,20 @@ function AuthContent() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 rounded border border-card-border bg-background text-foreground"
+              className="w-full px-3 py-2 rounded border border-card-border bg-background text-foreground focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
               required
+              minLength={6}
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full btn-primary py-2 rounded disabled:opacity-50"
+            className={`w-full py-2 rounded transition-colors ${
+              loading
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'btn-primary hover:bg-primary/90'
+            }`}
           >
             {loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
           </button>
@@ -139,8 +175,16 @@ function AuthContent() {
 
         <div className="mt-4 text-center">
           <button
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="text-sm text-secondary hover:text-primary"
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setError('');
+              setSuccess('');
+            }}
+            className={`text-sm transition-colors ${
+              isSignUp
+                ? 'text-secondary hover:text-primary'
+                : 'text-secondary hover:text-primary'
+            }`}
           >
             {isSignUp
               ? 'Already have an account? Sign in'
