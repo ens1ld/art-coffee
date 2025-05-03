@@ -69,38 +69,105 @@ function AuthContent() {
 
   // In case redirect doesn't happen automatically after 5 seconds
   useEffect(() => {
+    // Store the ref in a variable to avoid issues in the cleanup function
+    const timeoutRef = redirectTimeout.current;
+    
+    // Return cleanup function
     return () => {
-      if (redirectTimeout.current) {
-        clearTimeout(redirectTimeout.current);
+      if (timeoutRef) {
+        clearTimeout(timeoutRef);
       }
     };
   }, []);
 
   const handleSignUp = async (e) => {
     e.preventDefault();
+    
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setError("Passwords don't match");
+      return;
+    }
+    
+    // Validate password length
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+    
     setError('');
     setMessage('');
     setLoading(true);
 
     try {
+      console.log('Starting sign up process...');
       const role = isAdminSignUp ? 'admin' : 'user';
+      
+      // Sign up with Supabase Auth
+      console.log(`Signing up user with email: ${email}, role: ${role}`);
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { role },
+          data: { role }, // Store role in user metadata
           emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
+      
+      console.log('Sign up response:', { 
+        success: !!authData?.user, 
+        userId: authData?.user?.id,
+        identities: authData?.user?.identities?.length,
+        error: authError?.message || null 
+      });
+      
       if (authError) throw authError;
-      setMessage('Account created! Check your email for the confirmation link.');
+      
+      if (!authData?.user) {
+        console.error('No user data returned from sign up');
+        throw new Error('No user data returned from sign up');
+      }
+      
+      // Wait briefly to allow trigger to create profile
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Try to verify the profile was created
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single();
+          
+        if (profile) {
+          console.log('Profile created successfully:', profile.id);
+        } else if (profileError) {
+          console.log('Profile check error (may still be created by trigger):', profileError.message);
+        }
+      } catch (e) {
+        console.log('Error checking profile (non-critical):', e.message);
+      }
+      
+      setMessage(`Account created! ${authData.user.identities?.length === 0 
+        ? 'You can now sign in.' 
+        : 'Check your email for the confirmation link.'}`);
+        
       setIsSignUp(false);
       setIsAdminSignUp(false);
       setEmail('');
       setPassword('');
       setConfirmPassword('');
     } catch (error) {
-      setError(error.message || 'An error occurred during sign up');
+      console.error('Sign up error:', error);
+      setError(`Sign-up failed: ${error.message || 'Database error saving new user'}`);
+      
+      // Add debug info
+      setDebugInfo({
+        errorType: error.name,
+        errorMessage: error.message,
+        errorStack: error.stack,
+        timestamp: new Date().toISOString()
+      });
     } finally {
       setLoading(false);
     }
@@ -111,38 +178,173 @@ function AuthContent() {
     setError('');
     setMessage('');
     setLoading(true);
+    setDebugInfo(null); // Clear previous debug info
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
+      console.log('Starting sign in process...');
+      const { data: signInData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
+      console.log('Sign in response:', { 
+        success: !!signInData?.user, 
+        userId: signInData?.user?.id,
+        error: authError?.message || null 
+      });
+      
       if (authError) throw authError;
+      if (!signInData?.user) throw new Error('No user returned from Supabase');
+      
+      // Get raw session for diagnostics
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log('Current session after sign in:', {
+        exists: !!sessionData?.session,
+        userId: sessionData?.session?.user?.id
+      });
 
-      // Fetch profile to check if it exists
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-      if (profileError) {
-        setError('Profile not found. Please contact support.');
-        return;
+      // Fetch profile using multiple methods for resilience
+      let profile = null;
+      let fetchError = null;
+      
+      // Method 1: Try list query first (more reliable than .single())
+      try {
+        console.log('Method 1: Fetching profile via list query');
+        const { data: profiles, error: listError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', signInData.user.id);
+          
+        console.log('List query result:', {
+          success: !listError,
+          count: profiles?.length || 0
+        });
+        
+        if (!listError && profiles && profiles.length > 0) {
+          profile = profiles[0];
+          console.log('Profile found via list query:', profile.id);
+        } else if (listError) {
+          console.error('List query error:', listError);
+        } else {
+          console.log('No profiles found with list query');
+        }
+      } catch (err) {
+        console.error('Error in method 1:', err);
       }
-
-      // Force direct navigation based on role
-      if (profileData.role === 'admin' && profileData.approved) {
+      
+      // Method 2: Try single query if list query failed
+      if (!profile) {
+        try {
+          console.log('Method 2: Fetching profile via single query');
+          const { data: singleProfile, error: singleError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', signInData.user.id)
+            .single();
+            
+          if (!singleError && singleProfile) {
+            profile = singleProfile;
+            console.log('Profile found via single query:', profile.id);
+          } else if (singleError) {
+            console.error('Single query error:', singleError);
+            fetchError = singleError;
+          }
+        } catch (err) {
+          console.error('Error in method 2:', err);
+          fetchError = err;
+        }
+      }
+      
+      // Method 3: Create profile if not found
+      if (!profile) {
+        try {
+          console.log('Method 3: Creating missing profile');
+          const role = signInData.user.user_metadata?.role || 'user';
+          
+          // First check if profile exists again (race condition check)
+          const { data: doubleCheckProfiles } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', signInData.user.id);
+            
+          if (doubleCheckProfiles && doubleCheckProfiles.length > 0) {
+            profile = doubleCheckProfiles[0];
+            console.log('Profile found on double-check:', profile.id);
+          } else {
+            // Create new profile
+            const { data: newProfile, error: insertError } = await supabase
+              .from('profiles')
+              .insert([{ 
+                id: signInData.user.id, 
+                email: signInData.user.email,
+                role: role,
+                approved: role === 'admin' ? false : true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }])
+              .select()
+              .single();
+              
+            if (insertError) {
+              console.error('Profile creation error:', insertError);
+              fetchError = insertError;
+            } else if (newProfile) {
+              profile = newProfile;
+              console.log('New profile created:', profile.id);
+            }
+          }
+        } catch (err) {
+          console.error('Error in method 3:', err);
+          fetchError = err;
+        }
+      }
+      
+      // Handle final result
+      if (!profile) {
+        // Collect debugging information
+        const debugData = {
+          userId: signInData.user.id,
+          userEmail: signInData.user.email,
+          authStatus: 'success',
+          profileStatus: 'failed',
+          error: fetchError ? {
+            message: fetchError.message,
+            code: fetchError.code,
+            details: fetchError.details,
+            hint: fetchError.hint
+          } : 'Unknown profile fetch error',
+          timestamp: new Date().toISOString()
+        };
+        
+        console.error('All profile fetch methods failed:', debugData);
+        setDebugInfo(debugData);
+        throw new Error('Failed to retrieve user profile. Please try again.');
+      }
+      
+      // Success path
+      console.log('Sign-in completed, profile retrieved:', profile.role);
+      
+      // Redirect by role
+      if (profile.role === 'admin' && profile.approved) {
         window.location.href = '/admin';
-        return;
-      } else if (profileData.role === 'superadmin') {
+      } else if (profile.role === 'superadmin') {
         window.location.href = '/superadmin';
-        return;
       } else {
         window.location.href = '/profile';
-        return;
       }
     } catch (error) {
+      console.error('Sign in error:', error);
       setError(error.message || 'Failed to sign in');
+      
+      // Add debug info if not already set
+      if (!debugInfo) {
+        setDebugInfo({
+          errorType: error.name,
+          errorMessage: error.message,
+          errorStack: error.stack,
+          timestamp: new Date().toISOString()
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -220,6 +422,12 @@ function AuthContent() {
             {message && (
               <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
                 {message}
+              </div>
+            )}
+
+            {loading && (
+              <div className="flex justify-center my-4">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-amber-500 border-r-transparent"></div>
               </div>
             )}
 

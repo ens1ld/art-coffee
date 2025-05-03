@@ -33,6 +33,7 @@ DROP POLICY IF EXISTS "Users can see their own profile" ON profiles;
 DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
 DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
 DROP POLICY IF EXISTS "Superadmins can update all profiles" ON profiles;
+DROP POLICY IF EXISTS "Allow inserting profiles" ON profiles;
 
 -- Create basic RLS policies
 -- Allow users to view their own profile
@@ -75,20 +76,60 @@ CREATE POLICY "Allow inserting profiles"
     )
   );
 
--- Modify the trigger function to properly handle new users and conflicts
+-- Create a robust trigger function with better error handling and default values
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  default_role TEXT;
+  should_approve BOOLEAN;
 BEGIN
-  INSERT INTO profiles (id, email, role, approved)
-  VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'role', 'user'), 
-         CASE WHEN COALESCE(NEW.raw_user_meta_data->>'role', 'user') = 'admin' THEN FALSE ELSE TRUE END)
+  -- Get role from metadata if it exists, default to 'user'
+  BEGIN
+    default_role := COALESCE(
+      NEW.raw_user_meta_data->>'role', 
+      'user'
+    );
+  EXCEPTION WHEN OTHERS THEN
+    default_role := 'user';
+  END;
+  
+  -- Set approval based on role
+  should_approve := CASE 
+    WHEN default_role = 'admin' THEN FALSE
+    ELSE TRUE
+  END;
+  
+  -- Insert the new profile with safe defaults for all fields
+  INSERT INTO profiles (
+    id, 
+    email, 
+    role, 
+    approved, 
+    created_at, 
+    updated_at
+  ) 
+  VALUES (
+    NEW.id, 
+    NEW.email, 
+    default_role, 
+    should_approve, 
+    NOW(),
+    NOW()
+  )
   ON CONFLICT (id) DO NOTHING;
+  
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  -- Log the error to the Postgres logs and continue
+  RAISE NOTICE 'Error creating profile: %', SQLERRM;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create the trigger if it doesn't exist
+-- Drop existing trigger if it exists
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+-- Create a new trigger that fires AFTER INSERT
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();

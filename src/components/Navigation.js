@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useProfile } from '@/components/ProfileFetcher';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -22,7 +23,7 @@ export default function Navigation() {
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex space-x-6">
+        <nav className="hidden md:flex space-x-6 items-center">
           <Link href="/" className="text-amber-900 hover:text-amber-700">
             Home
           </Link>
@@ -45,21 +46,30 @@ export default function Navigation() {
             Bulk Order
           </Link>
           
-          {!loading && profile && profile.role === 'admin' && profile.approved && (
-            <Link href="/admin" className="text-amber-900 hover:text-amber-700">
+          {!loading && profile && (userRole === 'admin' || userRole === 'superadmin') && (
+            <Link 
+              href="/admin" 
+              className={`font-medium transition-colors hover:text-primary ${isActive('/admin') ? 'text-primary' : 'text-text-secondary'}`}
+            >
               Admin
             </Link>
           )}
           
-          {!loading && profile && profile.role === 'superadmin' && (
-            <Link href="/superadmin" className="text-amber-900 hover:text-amber-700">
+          {!loading && profile && userRole === 'superadmin' && (
+            <Link 
+              href="/superadmin" 
+              className={`font-medium transition-colors hover:text-primary ${isActive('/superadmin') ? 'text-primary' : 'text-text-secondary'}`}
+            >
               Superadmin
             </Link>
           )}
         </nav>
 
-        {/* Authentication Button */}
-        <div className="hidden md:block">
+        {/* Right side items */}
+        <div className="hidden md:flex items-center space-x-4">
+          <LanguageSwitcher />
+          
+          {/* Authentication Button */}
           {!loading && user ? (
             <div className="flex items-center space-x-2">
               <Link href="/profile" className="text-amber-900 hover:text-amber-700 mr-2">
@@ -122,17 +132,27 @@ export default function Navigation() {
               Bulk Order
             </Link>
             
-            {!loading && profile && profile.role === 'admin' && profile.approved && (
-              <Link href="/admin" className="text-amber-900 hover:text-amber-700">
+            {!loading && profile && (userRole === 'admin' || userRole === 'superadmin') && (
+              <Link 
+                href="/admin" 
+                className={`font-medium transition-colors hover:text-primary ${isActive('/admin') ? 'text-primary' : 'text-text-secondary'}`}
+              >
                 Admin
               </Link>
             )}
             
-            {!loading && profile && profile.role === 'superadmin' && (
-              <Link href="/superadmin" className="text-amber-900 hover:text-amber-700">
+            {!loading && profile && userRole === 'superadmin' && (
+              <Link 
+                href="/superadmin" 
+                className={`font-medium transition-colors hover:text-primary ${isActive('/superadmin') ? 'text-primary' : 'text-text-secondary'}`}
+              >
                 Superadmin
               </Link>
             )}
+            
+            <div className="py-2">
+              <LanguageSwitcher />
+            </div>
             
             {!loading && user ? (
               <>
