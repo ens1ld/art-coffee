@@ -1,123 +1,97 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirectTo') || '/order';
 
   useEffect(() => {
-    // Check if user is already logged in
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Get user role and redirect accordingly
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Get user's role and redirect accordingly
         const { data: profile } = await supabase
           .from('profiles')
           .select('role')
-          .eq('id', user.id)
+          .eq('id', session.user.id)
           .single();
 
         if (profile) {
-          redirectBasedOnRole(profile.role);
-        }
-      }
-    };
-    checkUser();
-  }, []);
-
-  const redirectBasedOnRole = (role) => {
-    switch (role) {
-      case 'superadmin':
-        router.push('/superadmin');
-        break;
-      case 'admin':
-        router.push('/admin');
-        break;
-      default:
-        router.push('/');
-        break;
-    }
-  };
-
-  const handleAuth = async (e) => {
-    e.preventDefault();
-    setStatus('');
-
-    try {
-      if (isSignUp) {
-        // Sign up
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-
-        if (error) throw error;
-
-        if (data.user) {
-          // Create user profile with default role
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([
-              {
-                id: data.user.id,
-                email: data.user.email,
-                role: 'user',
-              },
-            ]);
-
-          if (profileError) throw profileError;
-
-          setStatus('✅ Sign up successful! Please check your email to verify your account.');
-        }
-      } else {
-        // Sign in
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) throw error;
-
-        if (data.user) {
-          // Get user role and redirect
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', data.user.id)
-            .single();
-
-          if (profile) {
-            redirectBasedOnRole(profile.role);
+          switch (profile.role) {
+            case 'superadmin':
+              router.push('/superadmin');
+              break;
+            case 'admin':
+              router.push('/admin');
+              break;
+            default:
+              router.push(redirectTo);
           }
         }
       }
-    } catch (error) {
-      console.error(error);
-      setStatus(`❌ ${error.message}`);
+    };
+    checkSession();
+  }, [router, redirectTo]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      if (isSignUp) {
+        const { data: { user }, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+        if (signUpError) throw signUpError;
+
+        if (user) {
+          // Profile will be created automatically by the trigger we set up
+          setError('Check your email for the confirmation link!');
+        }
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) throw signInError;
+
+        // Redirect will be handled by the useEffect
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-      <div className="w-full max-w-md p-8 bg-card-bg border border-card-border rounded-xl">
-        <h1 className="text-3xl font-bold text-center mb-8 text-primary">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-card-bg border border-card-border rounded-xl p-8">
+        <h1 className="text-2xl font-bold text-primary mb-6 text-center">
           {isSignUp ? 'Create Account' : 'Welcome Back'}
         </h1>
 
-        {status && (
-          <div className="mb-4 p-3 rounded bg-opacity-20 bg-primary text-primary text-sm">
-            {status}
+        {error && (
+          <div className="mb-4 p-3 rounded bg-red-500 bg-opacity-20 text-red-500 text-sm">
+            {error}
           </div>
         )}
 
-        <form onSubmit={handleAuth} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-secondary mb-1">
               Email
             </label>
             <input
@@ -125,13 +99,13 @@ export default function AuthPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 input-primary rounded"
+              className="w-full px-3 py-2 rounded border border-card-border bg-background text-foreground"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-secondary mb-1">
               Password
             </label>
             <input
@@ -139,27 +113,28 @@ export default function AuthPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 input-primary rounded"
+              className="w-full px-3 py-2 rounded border border-card-border bg-background text-foreground"
               required
             />
           </div>
 
           <button
             type="submit"
-            className="w-full btn-primary py-2 rounded"
+            disabled={loading}
+            className="w-full btn-primary py-2 rounded disabled:opacity-50"
           >
-            {isSignUp ? 'Sign Up' : 'Sign In'}
+            {loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
           </button>
         </form>
 
         <div className="mt-4 text-center">
           <button
             onClick={() => setIsSignUp(!isSignUp)}
-            className="text-secondary hover:text-primary transition-colors"
+            className="text-sm text-secondary hover:text-primary"
           >
             {isSignUp
-              ? 'Already have an account? Sign In'
-              : "Don't have an account? Sign Up"}
+              ? 'Already have an account? Sign in'
+              : "Don't have an account? Sign up"}
           </button>
         </div>
       </div>

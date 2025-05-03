@@ -74,3 +74,50 @@ alwaysApply: true
    - Use **functional components only** (no class components).
    - Keep code simple, readable, and hackathon-friendly — minimal nesting, clean layout, and short function blocks.
 
+I want to implement proper role-based access across my Next.js app.
+
+Here’s what I need:
+
+1. **Authentication:**
+   - Users must sign in and sign up using Supabase auth.
+   - Users are assigned one of the roles: `"user"`, `"admin"`, or `"superadmin"`.
+
+2. **Authorization Rules:**
+   - Regular users can only access these routes:
+     - `/order`
+     - `/gift-card`
+     - `/loyalty`
+     - `/bulk-order`
+   - Admins can also access:
+     - `/admin`
+   - Only Superadmins can access:
+     - `/superadmin`
+
+3. **Middleware Logic:**
+   - Use `middleware.js` to protect routes based on role.
+   - If a user tries to access a page above their role, redirect them to the homepage or a “Not Authorized” page.
+
+4. **Supabase Role Handling:**
+   - The user role is stored in Supabase (either in a separate `profiles` table or directly in `user_metadata`).
+   - You can fetch the user’s role using Supabase session or `getUser()` and use that to verify access.
+
+5. **Redirect Logic:**
+   - If an unauthenticated user accesses a protected page, redirect them to `/login`.
+   - If an authenticated user accesses a page above their role, redirect them to `/not-authorized`.
+
+6. **UI Visibility Rules:**
+   - On the homepage, **hide the Admin Dashboard and Superadmin Panel cards** for users who are not authorized to view them.
+   - Only show admin links if the user is an admin or superadmin.
+   - Only show superadmin links if the user is a superadmin.
+
+7. **Sign Up / Login Pages:**
+   - Create `/login` and `/signup` pages using Supabase auth.
+   - Redirect users after login based on their role:
+     - Users → `/order`
+     - Admins → `/admin`
+     - Superadmins → `/superadmin`
+
+You can assume Supabase is already set up with a `lib/supabaseClient.js` file. Apply any necessary code structure to match these rules, including logic in `middleware.js`, route guards, conditional rendering in UI, and Supabase role retrieval.
+
+Please generate all necessary components, logic, and updates to match these expectations. Keep it clean, working, and modular. Start with the middleware + route protection setup.
+
