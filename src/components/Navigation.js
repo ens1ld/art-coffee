@@ -45,14 +45,20 @@ export default function Navigation() {
             Bulk Order
           </Link>
           
-          {!loading && profile && profile.role === 'admin' && profile.approved && (
-            <Link href="/admin" className="text-amber-900 hover:text-amber-700">
+          {!loading && profile && (userRole === 'admin' || userRole === 'superadmin') && (
+            <Link 
+              href="/admin" 
+              className={`font-medium transition-colors hover:text-primary ${isActive('/admin') ? 'text-primary' : 'text-text-secondary'}`}
+            >
               Admin
             </Link>
           )}
           
-          {!loading && profile && profile.role === 'superadmin' && (
-            <Link href="/superadmin" className="text-amber-900 hover:text-amber-700">
+          {!loading && profile && userRole === 'superadmin' && (
+            <Link 
+              href="/superadmin" 
+              className={`font-medium transition-colors hover:text-primary ${isActive('/superadmin') ? 'text-primary' : 'text-text-secondary'}`}
+            >
               Superadmin
             </Link>
           )}
@@ -122,14 +128,20 @@ export default function Navigation() {
               Bulk Order
             </Link>
             
-            {!loading && profile && profile.role === 'admin' && profile.approved && (
-              <Link href="/admin" className="text-amber-900 hover:text-amber-700">
+            {!loading && profile && (userRole === 'admin' || userRole === 'superadmin') && (
+              <Link 
+                href="/admin" 
+                className={`font-medium transition-colors hover:text-primary ${isActive('/admin') ? 'text-primary' : 'text-text-secondary'}`}
+              >
                 Admin
               </Link>
             )}
             
-            {!loading && profile && profile.role === 'superadmin' && (
-              <Link href="/superadmin" className="text-amber-900 hover:text-amber-700">
+            {!loading && profile && userRole === 'superadmin' && (
+              <Link 
+                href="/superadmin" 
+                className={`font-medium transition-colors hover:text-primary ${isActive('/superadmin') ? 'text-primary' : 'text-text-secondary'}`}
+              >
                 Superadmin
               </Link>
             )}

@@ -113,33 +113,31 @@ function AuthContent() {
     setLoading(true);
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (authError) throw authError;
+      if (!signInData?.user) throw new Error('No user returned from Supabase');
 
-      // Fetch profile to check if it exists
-      const { data: profileData, error: profileError } = await supabase
+      // Fetch profile using session user id
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', data.user.id)
+        .eq('id', signInData.user.id)
         .single();
-      if (profileError) {
+      if (profileError || !profile) {
         setError('Profile not found. Please contact support.');
         return;
       }
 
-      // Force direct navigation based on role
-      if (profileData.role === 'admin' && profileData.approved) {
+      // Redirect by role
+      if (profile.role === 'admin' && profile.approved) {
         window.location.href = '/admin';
-        return;
-      } else if (profileData.role === 'superadmin') {
+      } else if (profile.role === 'superadmin') {
         window.location.href = '/superadmin';
-        return;
       } else {
         window.location.href = '/profile';
-        return;
       }
     } catch (error) {
       setError(error.message || 'Failed to sign in');
@@ -220,6 +218,12 @@ function AuthContent() {
             {message && (
               <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
                 {message}
+              </div>
+            )}
+
+            {loading && (
+              <div className="flex justify-center my-4">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-amber-500 border-r-transparent"></div>
               </div>
             )}
 
