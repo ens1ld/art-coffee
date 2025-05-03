@@ -11,6 +11,13 @@ const PROTECTED_ROUTES = {
   '/superadmin': ['superadmin'],
 };
 
+// Define role-specific redirects
+const ROLE_REDIRECTS = {
+  'user': '/order',
+  'admin': '/admin',
+  'superadmin': '/superadmin'
+};
+
 export async function middleware(req) {
   const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req, res });
@@ -49,8 +56,8 @@ export async function middleware(req) {
       .find(([route]) => path.startsWith(route))?.[1] || [];
 
     if (!requiredRoles.includes(profile.role)) {
-      // User doesn't have required role, redirect to not-authorized
-      return NextResponse.redirect(new URL('/not-authorized', req.url));
+      // Instead of showing not-authorized, redirect to their role-specific page
+      return NextResponse.redirect(new URL(ROLE_REDIRECTS[profile.role], req.url));
     }
   }
 

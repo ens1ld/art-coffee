@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { useRouter } from 'next/navigation';
 
 export default function HomePage() {
   const [userRole, setUserRole] = useState(null);
@@ -18,11 +18,24 @@ export default function HomePage() {
           .single();
         if (profile) {
           setUserRole(profile.role);
+          // Redirect to role-specific page if not on homepage
+          if (window.location.pathname !== '/') {
+            switch (profile.role) {
+              case 'superadmin':
+                router.push('/superadmin');
+                break;
+              case 'admin':
+                router.push('/admin');
+                break;
+              default:
+                router.push('/order');
+            }
+          }
         }
       }
     };
     checkUser();
-  }, []);
+  }, [router]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -88,7 +101,7 @@ export default function HomePage() {
             <p className="text-secondary">Place orders for groups or events</p>
           </div>
 
-          {/* Admin Options */}
+          {/* Admin Options - Only visible to admins and superadmins */}
           {(userRole === 'admin' || userRole === 'superadmin') && (
             <div
               onClick={() => router.push('/admin')}
@@ -99,7 +112,7 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Superadmin Options */}
+          {/* Superadmin Options - Only visible to superadmins */}
           {userRole === 'superadmin' && (
             <div
               onClick={() => router.push('/superadmin')}

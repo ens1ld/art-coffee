@@ -1,9 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
-export default function AuthPage() {
+function AuthContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -17,7 +17,6 @@ export default function AuthPage() {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Get user's role and redirect accordingly
         const { data: profile } = await supabase
           .from('profiles')
           .select('role')
@@ -25,6 +24,7 @@ export default function AuthPage() {
           .single();
 
         if (profile) {
+          // Redirect based on role
           switch (profile.role) {
             case 'superadmin':
               router.push('/superadmin');
@@ -56,7 +56,17 @@ export default function AuthPage() {
         if (signUpError) throw signUpError;
 
         if (user) {
-          // Profile will be created automatically by the trigger we set up
+          // Create profile with default 'user' role
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([{
+              id: user.id,
+              email: user.email,
+              role: 'user'
+            }]);
+
+          if (profileError) throw profileError;
+
           setError('Check your email for the confirmation link!');
         }
       } else {
@@ -139,5 +149,19 @@ export default function AuthPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-secondary">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AuthContent />
+    </Suspense>
   );
 } 
