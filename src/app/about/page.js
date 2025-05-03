@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
+import Navigation from '@/components/Navigation';
 
 export default function AboutPage() {
   return (
