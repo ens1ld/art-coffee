@@ -7,7 +7,8 @@ import Footer from '@/components/Footer';
 import { useProfile } from '@/components/ProfileFetcher';
 
 export default function OrderPage() {
-  const [products, setProducts] = useState([
+  // Default products that will be used if we can't fetch from database
+  const defaultProducts = [
     {
       id: 1,
       name: 'Espresso',
@@ -56,8 +57,9 @@ export default function OrderPage() {
       image: '/images/cards/11.png',
       category: 'Coffee',
     },
-  ]);
+  ];
 
+  const [products, setProducts] = useState(defaultProducts);
   const [cart, setCart] = useState([]);
   const [activeProduct, setActiveProduct] = useState(null);
   const [customization, setCustomization] = useState({
@@ -72,6 +74,45 @@ export default function OrderPage() {
   const [favorites, setFavorites] = useState({});
   const [notification, setNotification] = useState({ message: '', type: '' });
   const { user: profileUser } = useProfile();
+  const [loading, setLoading] = useState(true);
+
+  // Try to fetch products from database
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('id');
+          
+        if (error) {
+          console.error('Error fetching products:', error);
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          // Map database fields to match our product structure
+          const mappedProducts = data.map(product => ({
+            id: product.id,
+            name: product.name,
+            price: parseFloat(product.price),
+            description: product.description,
+            image: product.image_url || `/images/cards/${product.id}.png`, // Fallback image
+            category: product.category || 'Coffee',
+          }));
+          
+          setProducts(mappedProducts);
+        }
+      } catch (err) {
+        console.error('Failed to fetch products:', err);
+        // Keep using default products
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   useEffect(() => {
     // Guest users can browse the menu without logging in
@@ -113,13 +154,23 @@ export default function OrderPage() {
           .select('*')
           .eq('user_id', user.id);
           
-        if (error) throw error;
+        if (error) {
+          // If it's a 404, the table might not exist yet
+          if (error.code === '404') {
+            console.warn('Favorites table may not exist yet');
+          } else {
+            console.error('Error loading favorites:', error);
+          }
+          return;
+        }
         
         // Create a map of product_id -> favorite for easy lookup
         const favMap = {};
-        data.forEach(fav => {
-          favMap[fav.product_id] = fav.id;
-        });
+        if (data) {
+          data.forEach(fav => {
+            favMap[fav.product_id] = fav.id;
+          });
+        }
         
         setFavorites(favMap);
       } catch (err) {
@@ -237,7 +288,13 @@ export default function OrderPage() {
         ])
         .select();
       
-      if (orderError) throw orderError;
+      if (orderError) {
+        // If orders table doesn't exist
+        if (orderError.code === '404') {
+          throw new Error('Orders table may not be set up yet');
+        }
+        throw orderError;
+      }
       
       // Add order items
       const orderItems = cart.map(item => ({
@@ -252,7 +309,13 @@ export default function OrderPage() {
         .from('order_items')
         .insert(orderItems);
       
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        // If order_items table doesn't exist
+        if (itemsError.code === '404') {
+          throw new Error('Order items table may not be set up yet');
+        }
+        throw itemsError;
+      }
       
       setOrderStatus('success');
       setCart([]);
@@ -286,7 +349,17 @@ export default function OrderPage() {
           .delete()
           .eq('id', favorites[productId]);
           
-        if (error) throw error;
+        if (error) {
+          // If favorites table doesn't exist
+          if (error.code === '404') {
+            setNotification({
+              message: 'Favorites feature is not set up yet',
+              type: 'error'
+            });
+            return;
+          }
+          throw error;
+        }
         
         // Update local state
         const newFavorites = { ...favorites };
@@ -310,7 +383,32 @@ export default function OrderPage() {
           ])
           .select();
           
-        if (error) throw error;
+        if (error) {
+          // If favorites table doesn't exist
+          if (error.code === '404') {
+            setNotification({
+              message: 'Favorites feature is not set up yet',
+              type: 'error'
+            });
+            return;
+          }
+          
+          // If there's a data type mismatch
+          if (error.code === '23502' || error.code === '22P02') {
+            setNotification({
+              message: 'There was an issue with the product ID format',
+              type: 'error'
+            });
+            console.error('Product ID format error:', error);
+            return;
+          }
+          
+          throw error;
+        }
+        
+        if (!data || data.length === 0) {
+          throw new Error('No data returned from insert');
+        }
         
         // Update local state
         setFavorites(prev => ({

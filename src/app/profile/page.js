@@ -25,12 +25,14 @@ export default function ProfilePage() {
   // Client-side only code
   useEffect(() => {
     setMounted(true);
-    
-    // Redirect to login if not authenticated
-    if (!loading && !user && mounted) {
+  }, []);
+
+  // Only redirect to login when we're sure there's no user
+  useEffect(() => {
+    if (mounted && !loading && !user) {
       router.push('/login');
     }
-  }, [loading, user, mounted, router]);
+  }, [mounted, loading, user, router]);
 
   // Handle role-based redirects
   useEffect(() => {
@@ -49,28 +51,61 @@ export default function ProfilePage() {
       
       setLoadingData(true);
       try {
-        // Fetch favorites from 'favorites' table (assuming it exists)
-        const { data: favoritesData, error: favoritesError } = await supabase
-          .from('favorites')
-          .select('*, products(*)')
-          .eq('user_id', user.id);
-          
-        if (!favoritesError && favoritesData) {
-          setFavorites(favoritesData);
+        // Fetch favorites from 'favorites' table if it exists
+        try {
+          const { data: favoritesData, error: favoritesError } = await supabase
+            .from('favorites')
+            .select('*, products(*)')
+            .eq('user_id', user.id);
+            
+          if (favoritesError) {
+            // If table doesn't exist or other error
+            if (favoritesError.code === '404') {
+              console.warn('Favorites table may not exist yet');
+            } else {
+              console.error('Error loading favorites:', favoritesError);
+            }
+            // Set to empty array to avoid undefined errors
+            setFavorites([]);
+          } else {
+            setFavorites(favoritesData || []);
+          }
+        } catch (favError) {
+          console.error('Error loading favorites:', favError);
+          // Set to empty array to avoid undefined errors
+          setFavorites([]);
         }
         
         // Fetch orders
-        const { data: ordersData, error: ordersError } = await supabase
-          .from('orders')
-          .select('*, order_items(*)')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-          
-        if (!ordersError && ordersData) {
-          setOrders(ordersData);
+        try {
+          const { data: ordersData, error: ordersError } = await supabase
+            .from('orders')
+            .select('*, order_items(*)')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+            
+          if (ordersError) {
+            // If table doesn't exist or other error
+            if (ordersError.code === '404') {
+              console.warn('Orders table may not exist yet');
+            } else {
+              console.error('Error loading orders:', ordersError);
+            }
+            // Set to empty array to avoid undefined errors
+            setOrders([]);
+          } else {
+            setOrders(ordersData || []);
+          }
+        } catch (orderError) {
+          console.error('Error loading orders:', orderError);
+          // Set to empty array to avoid undefined errors
+          setOrders([]);
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
+        // Set defaults to avoid rendering errors
+        setFavorites([]);
+        setOrders([]);
       } finally {
         setLoadingData(false);
       }
@@ -88,7 +123,13 @@ export default function ProfilePage() {
         .delete()
         .eq('id', favoriteId);
         
-      if (error) throw error;
+      if (error) {
+        // If favorites table doesn't exist
+        if (error.code === '404') {
+          throw new Error('Favorites feature is not available right now');
+        }
+        throw error;
+      }
       
       // Update local state
       setFavorites(favorites.filter(item => item.id !== favoriteId));
@@ -104,9 +145,14 @@ export default function ProfilePage() {
     } catch (error) {
       console.error('Error removing favorite:', error);
       setUpdateStatus({
-        message: 'Failed to remove favorite',
+        message: error.message || 'Failed to remove favorite',
         type: 'error'
       });
+      
+      // Clear error message after 5 seconds
+      setTimeout(() => {
+        setUpdateStatus({ message: '', type: '' });
+      }, 5000);
     }
   };
 
@@ -147,7 +193,7 @@ export default function ProfilePage() {
     );
   }
 
-  // If no user or profile, redirect to login
+  // If no user or profile after loading is complete, show login message
   if (!user || !profile) {
     return (
       <div className="min-h-screen bg-white flex flex-col">
