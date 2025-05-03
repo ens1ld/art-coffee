@@ -12,6 +12,7 @@ const PROTECTED_ROUTES = {
   '/gift-card': ['user', 'admin', 'superadmin'],
   '/loyalty': ['user', 'admin', 'superadmin'],
   '/bulk-order': ['user', 'admin', 'superadmin'],
+  '/profile': ['user', 'admin', 'superadmin'],
 };
 
 export async function middleware(request) {
@@ -68,35 +69,48 @@ export async function middleware(request) {
       if (profileError) {
         console.error('Error fetching profile in middleware:', profileError);
         
-        // If we can't get the profile but user is authenticated,
-        // let them proceed (the page will handle any missing profile issues)
-        return res;
+        // If profile not found, try to create one on the fly
+        if (profileError.code === 'PGRST116') {
+          const { data: newProfile, error: insertError } = await supabase
+            .from('profiles')
+            .insert([{ 
+              id: session.user.id, 
+              email: session.user.email,
+              role: 'user',
+              approved: true
+            }])
+            .select('*')
+            .single();
+            
+          if (insertError) {
+            console.error('Error creating profile in middleware:', insertError);
+            // If we couldn't create a profile, redirect to profile page to handle it
+            return NextResponse.redirect(new URL('/profile', request.url));
+          }
+          
+          // Use the newly created profile
+          if (newProfile) {
+            const userRole = newProfile.role || 'user';
+            const isApproved = newProfile.approved ?? true;
+            
+            // Do role-based checks with new profile
+            return handleRoleChecks(request, pathname, userRole, isApproved, res);
+          }
+        }
+        
+        // For any other profile error, let user proceed to profile page
+        return NextResponse.redirect(new URL('/profile', request.url));
       }
 
       if (!profile) {
         console.warn('No profile found for authenticated user in middleware');
-        return res;
+        return NextResponse.redirect(new URL('/profile', request.url));
       }
 
       const userRole = profile.role || 'user';
       const isApproved = profile.approved ?? true;
-
-      // For admin routes, check if the admin is approved
-      if (userRole === 'admin' && !isApproved && pathname.startsWith('/admin')) {
-        return NextResponse.redirect(new URL('/pending-approval', request.url));
-      }
-
-      // Check if user has required role for the route
-      const routePrefix = Object.keys(PROTECTED_ROUTES).find(route => 
-        pathname.startsWith(route)
-      );
       
-      if (routePrefix) {
-        const requiredRoles = PROTECTED_ROUTES[routePrefix];
-        if (!requiredRoles.includes(userRole)) {
-          return NextResponse.redirect(new URL('/not-authorized', request.url));
-        }
-      }
+      return handleRoleChecks(request, pathname, userRole, isApproved, res);
     }
 
     return res;
@@ -105,6 +119,28 @@ export async function middleware(request) {
     // In case of any error, allow the request to proceed and let the page handle it
     return res;
   }
+}
+
+// Helper function to handle role-based checks
+function handleRoleChecks(request, pathname, userRole, isApproved, res) {
+  // For admin routes, check if the admin is approved
+  if (userRole === 'admin' && !isApproved && pathname.startsWith('/admin')) {
+    return NextResponse.redirect(new URL('/pending-approval', request.url));
+  }
+
+  // Check if user has required role for the route
+  const routePrefix = Object.keys(PROTECTED_ROUTES).find(route => 
+    pathname.startsWith(route)
+  );
+  
+  if (routePrefix) {
+    const requiredRoles = PROTECTED_ROUTES[routePrefix];
+    if (!requiredRoles.includes(userRole)) {
+      return NextResponse.redirect(new URL('/not-authorized', request.url));
+    }
+  }
+  
+  return res;
 }
 
 // Only run middleware on specific paths

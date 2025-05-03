@@ -1,290 +1,156 @@
 'use client';
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import Logo from './Logo';
+import { useProfile } from '@/components/ProfileFetcher';
 
 export default function Navigation() {
-  const [userRole, setUserRole] = useState(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { profile, user, loading } = useProfile();
 
-  useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role, approved')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (profile) {
-            // Only set the role as active if the user is approved (or is not an admin)
-            if (profile.role !== 'admin' || profile.approved) {
-              setUserRole(profile.role);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error checking user session:', error);
-      }
-    };
-
-    checkUser();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role, approved')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (profile) {
-          // Only set the role as active if the user is approved (or is not an admin)
-          if (profile.role !== 'admin' || profile.approved) {
-            setUserRole(profile.role);
-          }
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setUserRole(null);
-      }
-    });
-
-    return () => {
-      if (authListener && authListener.subscription) {
-        authListener.subscription.unsubscribe();
-      }
-    };
-  }, []);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUserRole(null);
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
   };
-
-  const isActive = (path) => pathname === path;
 
   return (
     <header className="site-header">
-      <div className="container-custom flex items-center justify-between">
-        <Logo />
+      <div className="container mx-auto px-4 flex justify-between items-center">
+        <div className="flex items-center">
+          <Link href="/" className="text-xl font-bold text-amber-900">
+            Art Coffee
+          </Link>
+        </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
-          <Link 
-            href="/"
-            className={`font-medium transition-colors hover:text-primary ${
-              isActive('/') ? 'text-primary' : 'text-text-secondary'
-            }`}
-          >
+        <nav className="hidden md:flex space-x-6">
+          <Link href="/" className="text-amber-900 hover:text-amber-700">
             Home
           </Link>
-          
-          <Link 
-            href="/about"
-            className={`font-medium transition-colors hover:text-primary ${
-              isActive('/about') ? 'text-primary' : 'text-text-secondary'
-            }`}
-          >
+          <Link href="/about" className="text-amber-900 hover:text-amber-700">
             About
           </Link>
-          
-          {/* Customer links - shown to all */}
-          <Link 
-            href="/order" 
-            className={`font-medium transition-colors hover:text-primary ${
-              isActive('/order') ? 'text-primary' : 'text-text-secondary'
-            }`}
-          >
+          <Link href="/menu" className="text-amber-900 hover:text-amber-700">
+            Menu
+          </Link>
+          <Link href="/order" className="text-amber-900 hover:text-amber-700">
             Order
           </Link>
-          <Link 
-            href="/loyalty" 
-            className={`font-medium transition-colors hover:text-primary ${
-              isActive('/loyalty') ? 'text-primary' : 'text-text-secondary'
-            }`}
-          >
+          <Link href="/loyalty" className="text-amber-900 hover:text-amber-700">
             Loyalty
           </Link>
-          <Link 
-            href="/gift-card" 
-            className={`font-medium transition-colors hover:text-primary ${
-              isActive('/gift-card') ? 'text-primary' : 'text-text-secondary'
-            }`}
-          >
+          <Link href="/gift-card" className="text-amber-900 hover:text-amber-700">
             Gift Cards
           </Link>
-          <Link 
-            href="/bulk-order" 
-            className={`font-medium transition-colors hover:text-primary ${
-              isActive('/bulk-order') ? 'text-primary' : 'text-text-secondary'
-            }`}
-          >
+          <Link href="/bulk-order" className="text-amber-900 hover:text-amber-700">
             Bulk Order
           </Link>
           
-          {/* Admin link - only shown to admins and superadmins */}
-          {userRole === 'admin' || userRole === 'superadmin' ? (
-            <Link 
-              href="/admin" 
-              className={`font-medium transition-colors hover:text-primary ${
-                isActive('/admin') ? 'text-primary' : 'text-text-secondary'
-              }`}
-            >
+          {!loading && profile && profile.role === 'admin' && profile.approved && (
+            <Link href="/admin" className="text-amber-900 hover:text-amber-700">
               Admin
-            </Link>
-          ) : null}
-          
-          {/* Superadmin link - only shown to superadmins */}
-          {userRole === 'superadmin' && (
-            <Link 
-              href="/superadmin" 
-              className={`font-medium transition-colors hover:text-primary ${
-                isActive('/superadmin') ? 'text-primary' : 'text-text-secondary'
-              }`}
-            >
-              Superadmin
             </Link>
           )}
           
-          {userRole ? (
-            <button 
-              onClick={handleLogout}
-              className="btn-outline"
-            >
-              Logout
-            </button>
-          ) : (
-            <Link href="/auth" className="btn-primary">
-              Login / Sign Up
+          {!loading && profile && profile.role === 'superadmin' && (
+            <Link href="/superadmin" className="text-amber-900 hover:text-amber-700">
+              Superadmin
             </Link>
           )}
         </nav>
 
+        {/* Authentication Button */}
+        <div className="hidden md:block">
+          {!loading && user ? (
+            <div className="flex items-center space-x-2">
+              <Link href="/profile" className="text-amber-900 hover:text-amber-700 mr-2">
+                My Profile
+              </Link>
+              <button
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  window.location.href = '/';
+                }}
+                className="px-4 py-2 border border-amber-800 text-amber-900 rounded-md hover:bg-amber-800 hover:text-white transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/auth"
+              className="px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition-colors"
+            >
+              Login / Sign Up
+            </Link>
+          )}
+        </div>
+
         {/* Mobile Menu Button */}
-        <button 
-          className="md:hidden p-2 text-text-DEFAULT"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+        <button
+          className="md:hidden text-amber-900"
+          onClick={toggleMobileMenu}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-            {isMenuOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            )}
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
       </div>
 
-      {/* Mobile Navigation */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-border py-4 shadow-lg">
-          <div className="container-custom flex flex-col gap-4">
-            <Link 
-              href="/"
-              className={`font-medium transition-colors py-2 hover:text-primary ${
-                isActive('/') ? 'text-primary' : 'text-text-secondary'
-              }`}
-              onClick={() => setIsMenuOpen(false)}
-            >
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-amber-50 py-4">
+          <div className="container mx-auto px-4 flex flex-col space-y-3">
+            <Link href="/" className="text-amber-900 hover:text-amber-700">
               Home
             </Link>
-            
-            <Link 
-              href="/about"
-              className={`font-medium transition-colors py-2 hover:text-primary ${
-                isActive('/about') ? 'text-primary' : 'text-text-secondary'
-              }`}
-              onClick={() => setIsMenuOpen(false)}
-            >
+            <Link href="/about" className="text-amber-900 hover:text-amber-700">
               About
             </Link>
-            
-            {/* Customer links - shown to all */}
-            <Link 
-              href="/order" 
-              className={`font-medium transition-colors py-2 hover:text-primary ${
-                isActive('/order') ? 'text-primary' : 'text-text-secondary'
-              }`}
-              onClick={() => setIsMenuOpen(false)}
-            >
+            <Link href="/menu" className="text-amber-900 hover:text-amber-700">
+              Menu
+            </Link>
+            <Link href="/order" className="text-amber-900 hover:text-amber-700">
               Order
             </Link>
-            <Link 
-              href="/loyalty" 
-              className={`font-medium transition-colors py-2 hover:text-primary ${
-                isActive('/loyalty') ? 'text-primary' : 'text-text-secondary'
-              }`}
-              onClick={() => setIsMenuOpen(false)}
-            >
+            <Link href="/loyalty" className="text-amber-900 hover:text-amber-700">
               Loyalty
             </Link>
-            <Link 
-              href="/gift-card" 
-              className={`font-medium transition-colors py-2 hover:text-primary ${
-                isActive('/gift-card') ? 'text-primary' : 'text-text-secondary'
-              }`}
-              onClick={() => setIsMenuOpen(false)}
-            >
+            <Link href="/gift-card" className="text-amber-900 hover:text-amber-700">
               Gift Cards
             </Link>
-            <Link 
-              href="/bulk-order" 
-              className={`font-medium transition-colors py-2 hover:text-primary ${
-                isActive('/bulk-order') ? 'text-primary' : 'text-text-secondary'
-              }`}
-              onClick={() => setIsMenuOpen(false)}
-            >
+            <Link href="/bulk-order" className="text-amber-900 hover:text-amber-700">
               Bulk Order
             </Link>
             
-            {/* Admin link - only shown to admins and superadmins */}
-            {userRole === 'admin' || userRole === 'superadmin' ? (
-              <Link 
-                href="/admin" 
-                className={`font-medium transition-colors py-2 hover:text-primary ${
-                  isActive('/admin') ? 'text-primary' : 'text-text-secondary'
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-              >
+            {!loading && profile && profile.role === 'admin' && profile.approved && (
+              <Link href="/admin" className="text-amber-900 hover:text-amber-700">
                 Admin
               </Link>
-            ) : null}
+            )}
             
-            {/* Superadmin link - only shown to superadmins */}
-            {userRole === 'superadmin' && (
-              <Link 
-                href="/superadmin" 
-                className={`font-medium transition-colors py-2 hover:text-primary ${
-                  isActive('/superadmin') ? 'text-primary' : 'text-text-secondary'
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-              >
+            {!loading && profile && profile.role === 'superadmin' && (
+              <Link href="/superadmin" className="text-amber-900 hover:text-amber-700">
                 Superadmin
               </Link>
             )}
             
-            {userRole ? (
-              <button 
-                onClick={() => {
-                  handleLogout();
-                  setIsMenuOpen(false);
-                }}
-                className="btn-outline text-center"
-              >
-                Logout
-              </button>
+            {!loading && user ? (
+              <>
+                <Link href="/profile" className="text-amber-900 hover:text-amber-700">
+                  My Profile
+                </Link>
+                <button
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    window.location.href = '/';
+                  }}
+                  className="text-left text-amber-900 hover:text-amber-700"
+                >
+                  Sign Out
+                </button>
+              </>
             ) : (
-              <Link 
-                href="/auth" 
-                className="btn-primary text-center"
-                onClick={() => setIsMenuOpen(false)}
-              >
+              <Link href="/auth" className="text-amber-900 hover:text-amber-700">
                 Login / Sign Up
               </Link>
             )}
