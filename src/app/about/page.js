@@ -168,9 +168,9 @@ export default function AboutPage() {
             <div>
               <h3 className="text-lg font-semibold text-primary mb-4">Contact Us</h3>
               <p className="text-secondary">
-                Email: info@artcoffee.com<br />
-                Phone: (123) 456-7890<br />
-                Address: 123 Coffee Street, City
+                Email: art-kafe@live.com<br />
+                Phone: 069 875 6167<br />
+                Address: Lagja Emin Matraxhiu, Elbasan, Albania 3001
               </p>
             </div>
           </div>
