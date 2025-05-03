@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Art Coffee
 
-## Getting Started
+Art Coffee is a Next.js application with Supabase backend for a coffee ordering and loyalty system.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **User Authentication**: Login, signup, and role-based access
+- **Order System**: Custom coffee ordering with various options
+- **Gift Cards**: Purchase and redeem gift cards 
+- **Loyalty Program**: Earn and redeem loyalty points
+- **Favorites**: Save your favorite coffee products
+- **Admin Dashboard**: Manage orders and users
+- **Superadmin Panel**: System-wide configuration
+
+## Tech Stack
+
+- **Frontend**: Next.js 13+ with App Router
+- **Styling**: Tailwind CSS
+- **Backend**: Supabase (PostgreSQL + Auth)
+- **Hosting**: Vercel
+
+## Project Structure
+
+```
+art-coffee/
+├── src/
+│   ├── app/                   # Next.js app router pages
+│   │   ├── admin/             # Admin dashboard
+│   │   ├── auth/              # Authentication pages
+│   │   ├── bulk-order/        # Bulk order page
+│   │   ├── gift-card/         # Gift card page
+│   │   ├── loyalty/           # Loyalty page
+│   │   ├── order/             # Order page
+│   │   ├── profile/           # User profile page
+│   │   ├── superadmin/        # Superadmin dashboard
+│   │   └── page.js            # Home page
+│   ├── components/            # Reusable React components
+│   │   ├── Footer.js          
+│   │   ├── Navigation.js      
+│   │   └── ProfileFetcher.js  # User context provider
+│   ├── lib/                   # Utility functions and configuration
+│   │   └── supabaseClient.js  # Supabase client
+│   └── middleware.js          # Next.js middleware for auth
+└── supabase/                  # Supabase setup and migrations
+    └── migrations/            # SQL migrations
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Role-Based Access
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+- **User**: Can access order, gift card, loyalty, and profile pages
+- **Admin**: Additional access to admin dashboard 
+- **Superadmin**: Full access including superadmin panel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Local Development
 
-## Learn More
+1. Clone the repository
+2. Install dependencies:
+   ```
+   npm install
+   ```
+3. Create a `.env.local` file with your Supabase credentials:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your-project-url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   ```
+4. Run the development server:
+   ```
+   npm run dev
+   ```
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-To learn more about Next.js, take a look at the following resources:
+## Deployment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This project is deployed on Vercel.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Database Schema
 
-## Deploy on Vercel
+### Core Tables
+- **users**: Authentication and user management
+- **profiles**: Extended user information and roles
+- **products**: Coffee and other products
+- **orders**: Customer orders
+- **order_items**: Individual items in orders
+- **gift_cards**: Gift card information
+- **loyalty_transactions**: Loyalty point tracking
+- **favorites**: Users' favorite products
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Copyright © 2024 Art Coffee

@@ -14,6 +14,7 @@ export default function OrderPage() {
       price: 3.50,
       description: 'Our signature espresso shot, rich and bold.',
       image: '/images/cards/6.png',
+      category: 'Coffee',
     },
     {
       id: 2,
@@ -21,6 +22,7 @@ export default function OrderPage() {
       price: 4.50,
       description: 'Espresso with steamed milk and velvety foam.',
       image: '/images/cards/7.png',
+      category: 'Coffee',
     },
     {
       id: 3,
@@ -28,6 +30,7 @@ export default function OrderPage() {
       price: 4.75,
       description: 'Espresso with steamed milk and a light layer of foam.',
       image: '/images/cards/8.png',
+      category: 'Coffee',
     },
     {
       id: 4,
@@ -35,6 +38,7 @@ export default function OrderPage() {
       price: 4.00,
       description: 'Espresso diluted with hot water for a milder coffee.',
       image: '/images/cards/9.png',
+      category: 'Coffee',
     },
     {
       id: 5,
@@ -42,6 +46,7 @@ export default function OrderPage() {
       price: 5.00,
       description: 'Espresso with chocolate and steamed milk.',
       image: '/images/cards/10.png',
+      category: 'Coffee',
     },
     {
       id: 6,
@@ -49,6 +54,7 @@ export default function OrderPage() {
       price: 4.50,
       description: 'Coffee brewed with cold water for a smooth taste.',
       image: '/images/cards/11.png',
+      category: 'Coffee',
     },
   ]);
 
@@ -63,6 +69,8 @@ export default function OrderPage() {
   const [quantity, setQuantity] = useState(1);
   const [orderStatus, setOrderStatus] = useState('');
   const [user, setUser] = useState(null);
+  const [favorites, setFavorites] = useState({});
+  const [notification, setNotification] = useState({ message: '', type: '' });
   const { user: profileUser } = useProfile();
 
   useEffect(() => {
@@ -90,6 +98,37 @@ export default function OrderPage() {
     
     getUser();
   }, [profileUser]);
+
+  // Load user's favorites
+  useEffect(() => {
+    const loadFavorites = async () => {
+      if (!user) {
+        setFavorites({});
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('favorites')
+          .select('*')
+          .eq('user_id', user.id);
+          
+        if (error) throw error;
+        
+        // Create a map of product_id -> favorite for easy lookup
+        const favMap = {};
+        data.forEach(fav => {
+          favMap[fav.product_id] = fav.id;
+        });
+        
+        setFavorites(favMap);
+      } catch (err) {
+        console.error('Error loading favorites:', err);
+      }
+    };
+    
+    loadFavorites();
+  }, [user]);
 
   const resetCustomization = () => {
     setCustomization({
@@ -223,6 +262,81 @@ export default function OrderPage() {
     }
   };
 
+  // Toggle favorite status of a product
+  const toggleFavorite = async (productId) => {
+    if (!user) {
+      setNotification({
+        message: 'Please log in to save favorites',
+        type: 'error'
+      });
+      
+      // Clear notification after 3 seconds
+      setTimeout(() => {
+        setNotification({ message: '', type: '' });
+      }, 3000);
+      
+      return;
+    }
+    
+    try {
+      // If product is already favorited, delete the favorite
+      if (favorites[productId]) {
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('id', favorites[productId]);
+          
+        if (error) throw error;
+        
+        // Update local state
+        const newFavorites = { ...favorites };
+        delete newFavorites[productId];
+        setFavorites(newFavorites);
+        
+        setNotification({
+          message: 'Removed from favorites',
+          type: 'success'
+        });
+      } 
+      // Otherwise add a new favorite
+      else {
+        const { data, error } = await supabase
+          .from('favorites')
+          .insert([
+            {
+              user_id: user.id,
+              product_id: productId
+            }
+          ])
+          .select();
+          
+        if (error) throw error;
+        
+        // Update local state
+        setFavorites(prev => ({
+          ...prev,
+          [productId]: data[0].id
+        }));
+        
+        setNotification({
+          message: 'Added to favorites',
+          type: 'success'
+        });
+      }
+      
+      // Clear notification after 3 seconds
+      setTimeout(() => {
+        setNotification({ message: '', type: '' });
+      }, 3000);
+    } catch (err) {
+      console.error('Error toggling favorite:', err);
+      setNotification({
+        message: 'Failed to update favorites',
+        type: 'error'
+      });
+    }
+  };
+
   // Sizing options
   const sizes = [
     { id: 'small', label: 'Small', modifier: '−$0.50' },
@@ -249,382 +363,360 @@ export default function OrderPage() {
 
   // Extra options
   const extraOptions = [
-    { id: 'whipped_cream', label: 'Whipped Cream', price: '+$0.75' },
-    { id: 'caramel', label: 'Caramel Syrup', price: '+$0.75' },
-    { id: 'vanilla', label: 'Vanilla Syrup', price: '+$0.75' },
-    { id: 'chocolate', label: 'Chocolate Syrup', price: '+$0.75' },
-    { id: 'cinnamon', label: 'Cinnamon', price: '+$0.75' },
+    { id: 'whipped_cream', label: 'Whipped Cream', price: 0.75 },
+    { id: 'extra_shot', label: 'Extra Espresso Shot', price: 0.75 },
+    { id: 'vanilla_syrup', label: 'Vanilla Syrup', price: 0.75 },
+    { id: 'caramel_syrup', label: 'Caramel Syrup', price: 0.75 },
   ];
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Navigation />
 
-      <main className="flex-grow container-custom py-12">
-        <h1 className="heading-2 mb-8 text-center">Order Your Coffee</h1>
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-serif font-bold text-amber-900 mb-8 text-center">
+          Order Your Perfect Coffee
+        </h1>
 
-        {/* Login Required Message */}
-        {orderStatus === 'login-required' && (
-          <div className="mb-8 p-4 bg-primary/10 border border-primary rounded-lg">
-            <h3 className="font-medium text-lg text-primary mb-2">Authentication Required</h3>
-            <p className="text-text-secondary mb-4">
-              Please log in or create an account to complete your order.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <a href="/login?redirectTo=/order" className="btn-primary">
-                Log In
-              </a>
-              <a href="/signup" className="btn-secondary">
-                Create Account
-              </a>
-            </div>
-          </div>
-        )}
-
-        {/* Order Success Message */}
-        {orderStatus === 'success' && (
-          <div className="mb-8 p-4 bg-success/10 border border-success rounded-lg">
-            <h3 className="font-medium text-lg text-success mb-2">Order Placed Successfully!</h3>
-            <p className="text-text-secondary">
-              Your order has been placed and will be prepared shortly.
-            </p>
-          </div>
-        )}
-
-        {/* Order Error Message */}
-        {orderStatus === 'error' && (
-          <div className="mb-8 p-4 bg-error/10 border border-error rounded-lg">
-            <h3 className="font-medium text-lg text-error mb-2">Error Processing Order</h3>
-            <p className="text-text-secondary">
-              There was an error processing your order. Please try again.
-            </p>
+        {/* Notification message */}
+        {notification.message && (
+          <div className={`fixed top-20 right-4 z-50 p-3 rounded-md shadow-md ${
+            notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}>
+            {notification.message}
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Menu Section */}
+          {/* Product Selection Section */}
           <div className="lg:col-span-2">
-            {activeProduct ? (
-              <div className="card">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-serif font-semibold text-primary">
-                    Customize Your {activeProduct.name}
-                  </h2>
+            <h2 className="text-xl font-serif font-semibold text-amber-800 mb-4">
+              Menu
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {products.map((product) => (
+                <div 
+                  key={product.id}
+                  className="bg-amber-50 rounded-xl shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow relative"
+                  onClick={() => handleSelectProduct(product)}
+                >
+                  {/* Favorite button */}
                   <button 
-                    className="text-text-secondary hover:text-primary"
-                    onClick={() => setActiveProduct(null)}
+                    className="absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white shadow-sm hover:shadow-md transition-shadow"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent product selection
+                      toggleFavorite(product.id);
+                    }}
                   >
-                    ← Back to Menu
+                    {favorites[product.id] ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-amber-600">
+                        <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-500">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                      </svg>
+                    )}
                   </button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                  <div className="relative h-64 rounded-xl overflow-hidden">
-                    <Image
-                      src={activeProduct.image}
-                      alt={activeProduct.name}
+
+                  <div className="h-36 rounded-md overflow-hidden relative mb-3">
+                    <Image 
+                      src={product.image}
+                      alt={product.name}
                       fill
                       className="object-cover"
                     />
                   </div>
                   
-                  <div>
-                    <h3 className="text-xl font-serif font-semibold text-primary mb-2">
-                      {activeProduct.name}
-                    </h3>
-                    <p className="text-text-secondary mb-4">
-                      {activeProduct.description}
-                    </p>
-                    
-                    <div className="flex justify-between items-center">
-                      <div className="text-primary font-semibold">
-                        ${calculateItemPrice().toFixed(2)}
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-text-secondary hover:border-primary hover:text-primary"
-                        >
-                          −
-                        </button>
-                        <span className="w-8 text-center">{quantity}</span>
-                        <button
-                          onClick={() => setQuantity(q => q + 1)}
-                          className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-text-secondary hover:border-primary hover:text-primary"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
+                  <h3 className="font-semibold text-amber-900">{product.name}</h3>
+                  
+                  <div className="flex justify-between items-center mt-1 mb-2">
+                    <span className="text-primary font-semibold">${product.price.toFixed(2)}</span>
+                    <span className="text-xs text-gray-500">{product.category}</span>
+                  </div>
+                  
+                  <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Order Summary Section */}
+          <div className="lg:col-span-1">
+            {activeProduct ? (
+              <div className="bg-amber-50 rounded-xl shadow-sm p-6">
+                <h2 className="text-xl font-serif font-semibold text-amber-800 mb-4">
+                  Customize Your {activeProduct.name}
+                </h2>
+                
+                {/* Product Image */}
+                <div className="h-48 rounded-md overflow-hidden relative mb-4">
+                  <Image 
+                    src={activeProduct.image}
+                    alt={activeProduct.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                
+                {/* Size Selection */}
+                <div className="mb-6">
+                  <h3 className="font-medium text-amber-900 mb-2">Size</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {sizes.map((size) => (
+                      <button
+                        key={size.id}
+                        type="button"
+                        className={`px-4 py-2 rounded-full text-sm flex-1 ${
+                          customization.size === size.id
+                            ? 'bg-amber-800 text-white'
+                            : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-100'
+                        }`}
+                        onClick={() => handleCustomizationChange('size', size.id)}
+                      >
+                        {size.label}
+                        {size.modifier && (
+                          <span className="ml-1 text-xs opacity-75">{size.modifier}</span>
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </div>
                 
-                <div className="space-y-6">
-                  {/* Size Selection */}
-                  <div>
-                    <h4 className="font-medium text-primary mb-3">Size</h4>
-                    <div className="grid grid-cols-3 gap-3">
-                      {sizes.map(size => (
-                        <button
-                          key={size.id}
-                          onClick={() => handleCustomizationChange('size', size.id)}
-                          className={`py-2 px-3 rounded-button border text-sm transition-colors ${
-                            customization.size === size.id
-                              ? 'bg-primary text-white border-primary'
-                              : 'bg-white border-border text-text-secondary hover:border-primary'
-                          }`}
-                        >
-                          <div className="font-medium">{size.label}</div>
-                          {size.modifier && (
-                            <div className="text-xs opacity-90">
-                              {size.modifier}
-                            </div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
+                {/* Milk Selection */}
+                <div className="mb-6">
+                  <h3 className="font-medium text-amber-900 mb-2">Milk</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {milkOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={`px-3 py-2 rounded-md text-sm ${
+                          customization.milk === option.id
+                            ? 'bg-amber-800 text-white'
+                            : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-100'
+                        }`}
+                        onClick={() => handleCustomizationChange('milk', option.id)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
                   </div>
-                  
-                  {/* Milk Selection */}
-                  <div>
-                    <h4 className="font-medium text-primary mb-3">Milk</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {milkOptions.map(milk => (
-                        <button
-                          key={milk.id}
-                          onClick={() => handleCustomizationChange('milk', milk.id)}
-                          className={`py-2 px-3 rounded-button border text-sm transition-colors ${
-                            customization.milk === milk.id
-                              ? 'bg-primary text-white border-primary'
-                              : 'bg-white border-border text-text-secondary hover:border-primary'
-                          }`}
-                        >
-                          {milk.label}
-                        </button>
-                      ))}
-                    </div>
+                </div>
+                
+                {/* Sugar Selection */}
+                <div className="mb-6">
+                  <h3 className="font-medium text-amber-900 mb-2">Sugar</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {sugarOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={`px-3 py-2 rounded-md text-sm ${
+                          customization.sugar === option.id
+                            ? 'bg-amber-800 text-white'
+                            : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-100'
+                        }`}
+                        onClick={() => handleCustomizationChange('sugar', option.id)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
                   </div>
-                  
-                  {/* Sugar Selection */}
-                  <div>
-                    <h4 className="font-medium text-primary mb-3">Sugar</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {sugarOptions.map(sugar => (
-                        <button
-                          key={sugar.id}
-                          onClick={() => handleCustomizationChange('sugar', sugar.id)}
-                          className={`py-2 px-3 rounded-button border text-sm transition-colors ${
-                            customization.sugar === sugar.id
-                              ? 'bg-primary text-white border-primary'
-                              : 'bg-white border-border text-text-secondary hover:border-primary'
-                          }`}
-                        >
-                          {sugar.label}
-                        </button>
-                      ))}
-                    </div>
+                </div>
+                
+                {/* Extras Selection */}
+                <div className="mb-6">
+                  <h3 className="font-medium text-amber-900 mb-2">Extras (+$0.75 each)</h3>
+                  <div className="space-y-2">
+                    {extraOptions.map((option) => (
+                      <label
+                        key={option.id}
+                        className="flex items-center space-x-2 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={customization.extras.includes(option.id)}
+                          onChange={() => handleCustomizationChange('extras', option.id)}
+                          className="w-4 h-4 text-amber-600 bg-gray-100 rounded border-gray-300 focus:ring-amber-500"
+                        />
+                        <span className="text-gray-700">{option.label}</span>
+                      </label>
+                    ))}
                   </div>
-                  
-                  {/* Extras Selection */}
+                </div>
+                
+                {/* Quantity Selection */}
+                <div className="mb-6">
+                  <h3 className="font-medium text-amber-900 mb-2">Quantity</h3>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      type="button"
+                      className="w-8 h-8 rounded-full bg-white border border-amber-300 text-amber-800 flex items-center justify-center hover:bg-amber-100"
+                      onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                    >
+                      <span className="sr-only">Decrease</span>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                      </svg>
+                    </button>
+                    
+                    <span className="text-lg font-medium text-gray-800 w-8 text-center">
+                      {quantity}
+                    </span>
+                    
+                    <button
+                      type="button"
+                      className="w-8 h-8 rounded-full bg-white border border-amber-300 text-amber-800 flex items-center justify-center hover:bg-amber-100"
+                      onClick={() => setQuantity(prev => Math.min(10, prev + 1))}
+                    >
+                      <span className="sr-only">Increase</span>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Price and Add to Cart */}
+                <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h4 className="font-medium text-primary mb-3">Extras</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {extraOptions.map(extra => (
-                        <button
-                          key={extra.id}
-                          onClick={() => handleCustomizationChange('extras', extra.id)}
-                          className={`py-2 px-3 rounded-button border text-sm transition-colors flex justify-between items-center ${
-                            customization.extras.includes(extra.id)
-                              ? 'bg-primary text-white border-primary'
-                              : 'bg-white border-border text-text-secondary hover:border-primary'
-                          }`}
-                        >
-                          <span>{extra.label}</span>
-                          <span className="text-xs opacity-90">{extra.price}</span>
-                        </button>
-                      ))}
-                    </div>
+                    <span className="text-sm text-gray-600">Total:</span>
+                    <span className="ml-2 text-xl font-semibold text-amber-900">
+                      ${calculateItemPrice().toFixed(2)}
+                    </span>
                   </div>
                   
                   <button
+                    type="button"
+                    className="px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition-colors"
                     onClick={addToCart}
-                    className="btn-primary w-full"
                   >
-                    Add to Cart — ${calculateItemPrice().toFixed(2)}
+                    Add to Cart
                   </button>
                 </div>
+                
+                <button
+                  type="button"
+                  className="w-full text-amber-700 text-sm text-center mt-2"
+                  onClick={() => setActiveProduct(null)}
+                >
+                  Cancel
+                </button>
               </div>
             ) : (
-              <div>
-                <h2 className="text-xl font-serif font-semibold text-primary mb-6">
-                  Coffee Menu
+              <div className="bg-amber-50 rounded-xl shadow-sm p-6">
+                <h2 className="text-xl font-serif font-semibold text-amber-800 mb-4">
+                  Your Cart {cart.length > 0 && `(${cart.length})`}
                 </h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {products.map(product => (
-                    <div 
-                      key={product.id}
-                      className="card hover:shadow-card-hover cursor-pointer transition-all"
-                      onClick={() => handleSelectProduct(product)}
-                    >
-                      <div className="relative h-40 rounded-xl overflow-hidden mb-4">
-                        <Image
-                          src={product.image}
-                          alt={product.name}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <h3 className="text-lg font-serif font-semibold text-primary mb-1">
-                        {product.name}
-                      </h3>
-                      <p className="text-text-secondary text-sm mb-3 line-clamp-2">
-                        {product.description}
-                      </p>
-                      <div className="flex justify-between items-center">
-                        <span className="text-primary font-semibold">
-                          ${product.price.toFixed(2)}
-                        </span>
-                        <button
-                          className="text-xs btn-outline py-1 px-3"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelectProduct(product);
-                          }}
-                        >
-                          Customize
-            </button>
-          </div>
+                {cart.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600 mb-4">Your cart is empty</p>
+                    <p className="text-sm text-gray-500">
+                      Click on a product to start ordering
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="divide-y divide-amber-200 mb-4">
+                      {cart.map((item) => (
+                        <div key={item.id} className="py-3">
+                          <div className="flex justify-between">
+                            <div>
+                              <h3 className="font-medium text-amber-900">{item.name}</h3>
+                              <p className="text-xs text-gray-600">
+                                {item.customization.size.charAt(0).toUpperCase() + item.customization.size.slice(1)}{' '}
+                                • {item.quantity} {item.quantity === 1 ? 'item' : 'items'}
+                              </p>
+                              <ul className="text-xs text-gray-500 mt-1">
+                                <li>Milk: {item.customization.milk.charAt(0).toUpperCase() + item.customization.milk.slice(1)}</li>
+                                <li>Sugar: {item.customization.sugar.charAt(0).toUpperCase() + item.customization.sugar.slice(1)}</li>
+                                {item.customization.extras.length > 0 && (
+                                  <li>
+                                    Extras: {item.customization.extras.map(extra => 
+                                      extra.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+                                    ).join(', ')}
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                            
+                            <div className="flex flex-col items-end">
+                              <span className="font-medium">${item.price.toFixed(2)}</span>
+                              <button
+                                type="button"
+                                className="text-xs text-red-600 hover:text-red-800 mt-2"
+                                onClick={() => removeFromCart(item.id)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                    
+                    <div className="border-t border-amber-200 pt-4 mb-6">
+                      <div className="flex justify-between text-lg font-semibold">
+                        <span>Total:</span>
+                        <span>${calculateTotalPrice()}</span>
+                      </div>
+                    </div>
+                    
+                    <button
+                      type="button"
+                      className="w-full py-3 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition-colors"
+                      onClick={handleCheckout}
+                    >
+                      Checkout
+                    </button>
+                  </>
+                )}
+                
+                {/* Order Status Messages */}
+                {orderStatus === 'login-required' && (
+                  <div className="mt-4 p-4 bg-amber-100 text-amber-800 rounded-md">
+                    <p className="text-sm font-medium">Please log in to complete your order</p>
+                    <a 
+                      href="/login?redirectTo=/order" 
+                      className="text-amber-800 underline text-sm mt-2 inline-block"
+                    >
+                      Go to login
+                    </a>
+                  </div>
+                )}
+                
+                {orderStatus === 'processing' && (
+                  <div className="mt-4 p-4 bg-blue-100 text-blue-800 rounded-md flex items-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p className="text-sm font-medium">Processing your order...</p>
+                  </div>
+                )}
+                
+                {orderStatus === 'success' && (
+                  <div className="mt-4 p-4 bg-green-100 text-green-800 rounded-md">
+                    <p className="text-sm font-medium">Your order has been placed successfully!</p>
+                    <p className="text-xs mt-1">Thank you for ordering with Art Coffee.</p>
+                  </div>
+                )}
+                
+                {orderStatus === 'error' && (
+                  <div className="mt-4 p-4 bg-red-100 text-red-800 rounded-md">
+                    <p className="text-sm font-medium">There was an error processing your order.</p>
+                    <p className="text-xs mt-1">Please try again or contact support.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
-          
-          {/* Cart Section */}
-          <div className="lg:col-span-1">
-            <div className="card sticky top-20">
-              <h2 className="text-xl font-serif font-semibold text-primary mb-6">
-                Your Order
-              </h2>
-              
-              {cart.length === 0 ? (
-                <div className="text-center py-6">
-                  <div className="w-16 h-16 mx-auto bg-[#F9F5F0] rounded-full flex items-center justify-center mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-text-light" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  <p className="text-text-secondary mb-4">
-                    Your cart is empty
-                  </p>
-                  {orderStatus === 'success' && (
-                    <div className="p-3 bg-success/10 border border-success/30 rounded text-success text-sm mb-4">
-                      Order placed successfully!
-                    </div>
-                  )}
-                  {orderStatus === 'error' && (
-                    <div className="p-3 bg-error/10 border border-error/30 rounded text-error text-sm mb-4">
-                      Failed to place order. Please try again.
-                    </div>
-                  )}
-                  <button
-                    className="btn-outline"
-                    onClick={() => setActiveProduct(products[0])}
-                  >
-                    Start Ordering
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    {cart.map(item => (
-                      <div key={item.id} className="flex justify-between border-b border-border pb-4">
-                        <div>
-                          <div className="flex items-center">
-                            <span className="font-medium text-primary">
-                              {item.name}
-                            </span>
-                            <span className="text-text-light text-sm ml-2">
-                              × {item.quantity}
-                            </span>
-                          </div>
-                          <div className="text-xs text-text-light mt-1">
-                            <div>{item.customization.size}, {item.customization.milk} milk, {item.customization.sugar} sugar</div>
-                            {item.customization.extras.length > 0 && (
-                              <div>+ {item.customization.extras.join(', ').replace(/_/g, ' ')}</div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-medium text-primary">
-                            ${item.price.toFixed(2)}
-                          </span>
-                          <button
-                            onClick={() => removeFromCart(item.id)}
-                            className="text-text-light hover:text-error"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-          </div>
-        ))}
-      </div>
-                  
-                  <div className="border-t border-border pt-4">
-                    <div className="flex justify-between mb-2">
-                      <span className="text-text-secondary">Subtotal</span>
-                      <span className="font-medium">${calculateTotalPrice()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">Tax</span>
-                      <span className="font-medium">Included</span>
-                    </div>
-                  </div>
-                  
-                  <div className="border-t border-border pt-4">
-                    <div className="flex justify-between mb-4">
-                      <span className="text-lg font-medium text-primary">Total</span>
-                      <span className="text-lg font-semibold text-primary">${calculateTotalPrice()}</span>
-                    </div>
-                    
-                    {orderStatus === 'login-required' && (
-                      <div className="p-3 bg-warning/10 border border-warning/30 rounded text-warning text-sm mb-4">
-                        Please log in to complete your order
-                      </div>
-                    )}
-                    
-                    {orderStatus === 'processing' ? (
-                      <button 
-                        className="w-full btn-primary opacity-70 cursor-not-allowed flex justify-center items-center"
-                        disabled
-                      >
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Processing...
-                      </button>
-                    ) : (
-                      <button 
-                        className="w-full btn-primary"
-                        onClick={handleCheckout}
-                      >
-                        Place Order
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       </main>
-
+      
       <Footer />
     </div>
   );

@@ -8,82 +8,112 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import ProfileFetcherWithRenderProps from '@/components/ProfileFetcher';
-
-// Sample data that would normally come from the database
-const mockFavorites = [
-  { id: 'p1', name: 'Caramel Macchiato', image: '/logo.svg', price: 4.99, category: 'Coffee' },
-  { id: 'p2', name: 'Blueberry Muffin', image: '/logo.svg', price: 3.49, category: 'Pastry' },
-  { id: 'p3', name: 'Cold Brew', image: '/logo.svg', price: 4.49, category: 'Coffee' }
-];
-
-const mockOrders = [
-  { id: '1001', date: '2023-06-15', items: ['Caramel Macchiato', 'Blueberry Muffin'], total: 8.48, status: 'Completed' },
-  { id: '1002', date: '2023-06-10', items: ['Cold Brew', 'Chocolate Croissant'], total: 7.98, status: 'Completed' },
-  { id: '1003', date: '2023-05-28', items: ['Americano', 'Breakfast Sandwich'], total: 9.47, status: 'Completed' },
-];
-
-const mockPreferences = {
-  favoriteProducts: ['Caramel Macchiato', 'Cold Brew', 'Blueberry Muffin'],
-  dietaryPreferences: ['Low sugar options', 'Dairy alternatives available'],
-  suggestedItems: [
-    { id: 's1', name: 'Vanilla Latte', reason: 'Based on your love for Caramel Macchiato' },
-    { id: 's2', name: 'Nitro Cold Brew', reason: 'Since you enjoy our Cold Brew' },
-    { id: 's3', name: 'Banana Bread', reason: 'Pairs well with your favorite coffee choices' }
-  ]
-};
+import { useProfile } from '@/components/ProfileFetcher';
 
 export default function ProfilePage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [updateStatus, setUpdateStatus] = useState({ message: '', type: '' });
   const [activeTab, setActiveTab] = useState('overview');
-  const [favorites, setFavorites] = useState(mockFavorites);
-  const [orders, setOrders] = useState(mockOrders);
-  const [preferences, setPreferences] = useState(mockPreferences);
-  const [lastProfile, setLastProfile] = useState(null);
+  const [favorites, setFavorites] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  // Get user profile from context
+  const { user, profile, loading } = useProfile();
 
   // Client-side only code
   useEffect(() => {
     setMounted(true);
-  }, []);
+    
+    // Redirect to login if not authenticated
+    if (!loading && !user && mounted) {
+      router.push('/login');
+    }
+  }, [loading, user, mounted, router]);
 
   // Handle role-based redirects
-  const handleProfileUpdate = useCallback((profile) => {
+  useEffect(() => {
     if (!mounted || !profile) return;
-    
-    setLastProfile(profile);
     
     // Redirect based on role
     if (profile.role === 'admin' && !profile.approved) {
       router.push('/pending-approval');
-    } else if (profile.role === 'admin' && profile.approved) {
-      router.push('/admin');
-    } else if (profile.role === 'superadmin') {
-      router.push('/superadmin');
     }
-  }, [mounted, router]);
+  }, [mounted, profile, router]);
 
-  // Effect to handle profile updates
+  // Fetch user data (favorites and orders) when profile is available
   useEffect(() => {
-    if (lastProfile) {
-      handleProfileUpdate(lastProfile);
+    const fetchUserData = async () => {
+      if (!user || !profile) return;
+      
+      setLoadingData(true);
+      try {
+        // Fetch favorites from 'favorites' table (assuming it exists)
+        const { data: favoritesData, error: favoritesError } = await supabase
+          .from('favorites')
+          .select('*, products(*)')
+          .eq('user_id', user.id);
+          
+        if (!favoritesError && favoritesData) {
+          setFavorites(favoritesData);
+        }
+        
+        // Fetch orders
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        if (!ordersError && ordersData) {
+          setOrders(ordersData);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    
+    if (mounted && user && profile) {
+      fetchUserData();
     }
-  }, [lastProfile, handleProfileUpdate]);
+  }, [mounted, user, profile]);
 
-  const handleRemoveFavorite = (itemId) => {
-    // In a real implementation, this would call an API to remove from favorites
-    setFavorites(favorites.filter(item => item.id !== itemId));
-    setUpdateStatus({
-      message: 'Item removed from favorites',
-      type: 'success'
-    });
+  const handleRemoveFavorite = async (favoriteId) => {
+    try {
+      const { error } = await supabase
+        .from('favorites')
+        .delete()
+        .eq('id', favoriteId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setFavorites(favorites.filter(item => item.id !== favoriteId));
+      setUpdateStatus({
+        message: 'Item removed from favorites',
+        type: 'success'
+      });
+      
+      // Clear status message after 3 seconds
+      setTimeout(() => {
+        setUpdateStatus({ message: '', type: '' });
+      }, 3000);
+    } catch (error) {
+      console.error('Error removing favorite:', error);
+      setUpdateStatus({
+        message: 'Failed to remove favorite',
+        type: 'error'
+      });
+    }
   };
 
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
-      router.push('/auth');
+      router.push('/');
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -104,36 +134,128 @@ export default function ProfilePage() {
     }
   };
 
-  const renderTabContent = (profile) => {
-    switch (activeTab) {
-      case 'overview':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold text-amber-800 mb-2">Account Information</h2>
-              <div className="bg-amber-50 p-4 rounded-md">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-gray-600 text-sm">Email</p>
-                    <p className="font-medium">{profile.email}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 text-sm">User ID</p>
-                    <p className="font-medium text-sm overflow-ellipsis overflow-hidden">{profile.id}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 text-sm">Account Type</p>
-                    <p className="font-medium">{getUserRoleDisplay(profile)}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 text-sm">Account Status</p>
-                    <p className="font-medium">{profile.approved ? 'Approved' : 'Pending Approval'}</p>
+  // If still loading, show a loading spinner
+  if (loading || !mounted) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <Navigation />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-800"></div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // If no user or profile, redirect to login
+  if (!user || !profile) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <Navigation />
+        <div className="flex-grow flex items-center justify-center p-4">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-amber-800 mb-4">Authentication Required</h1>
+            <p className="mb-6">Please log in to view your profile.</p>
+            <Link href="/login" className="btn-primary">
+              Go to Login
+            </Link>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white flex flex-col">
+      <Navigation />
+      
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <div className="max-w-5xl mx-auto">
+          <div className="mb-8 bg-amber-50 p-6 rounded-xl shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-amber-200 rounded-full flex items-center justify-center">
+                  <span className="text-2xl font-bold text-amber-800">
+                    {profile.email?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-amber-900">My Profile</h1>
+                  <p className="text-amber-700">{profile.email}</p>
+                </div>
+              </div>
+              
+              <button
+                onClick={handleSignOut}
+                className="px-4 py-2 bg-white border border-amber-800 text-amber-800 rounded-md hover:bg-amber-800 hover:text-white transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+            
+            {updateStatus.message && (
+              <div className={`mt-4 p-3 rounded ${updateStatus.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {updateStatus.message}
+              </div>
+            )}
+          </div>
+          
+          <div className="mb-6 border-b border-amber-200">
+            <nav className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'overview' ? 'border-amber-800 text-amber-800 font-medium' : 'border-transparent text-gray-600 hover:text-amber-700'}`}
+              >
+                Overview
+              </button>
+              <button
+                onClick={() => setActiveTab('favorites')}
+                className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'favorites' ? 'border-amber-800 text-amber-800 font-medium' : 'border-transparent text-gray-600 hover:text-amber-700'}`}
+              >
+                Favorites
+              </button>
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'orders' ? 'border-amber-800 text-amber-800 font-medium' : 'border-transparent text-gray-600 hover:text-amber-700'}`}
+              >
+                Orders
+              </button>
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'settings' ? 'border-amber-800 text-amber-800 font-medium' : 'border-transparent text-gray-600 hover:text-amber-700'}`}
+              >
+                Settings
+              </button>
+            </nav>
+          </div>
+          
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold text-amber-800 mb-2">Account Information</h2>
+                <div className="bg-amber-50 p-4 rounded-md">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-gray-600 text-sm">Email</p>
+                      <p className="font-medium">{profile.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 text-sm">User ID</p>
+                      <p className="font-medium text-sm overflow-ellipsis overflow-hidden">{profile.id}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 text-sm">Account Type</p>
+                      <p className="font-medium">{getUserRoleDisplay(profile)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 text-sm">Account Status</p>
+                      <p className="font-medium">{profile.approved ? 'Approved' : 'Pending Approval'}</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {profile && (
               <div>
                 <h2 className="text-lg font-semibold text-amber-800 mb-2">Profile Settings</h2>
                 <div className="bg-amber-50 p-4 rounded-md">
@@ -141,23 +263,212 @@ export default function ProfilePage() {
                     <div>
                       <p className="text-gray-600 text-sm">Created At</p>
                       <p className="font-medium">
-                        {mounted && profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Loading...'}
+                        {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'N/A'}
                       </p>
                     </div>
                     <div>
                       <p className="text-gray-600 text-sm">Last Updated</p>
                       <p className="font-medium">
-                        {mounted && profile.updated_at ? new Date(profile.updated_at).toLocaleDateString() : 'Loading...'}
+                        {profile.updated_at ? new Date(profile.updated_at).toLocaleDateString() : 'N/A'}
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
 
+              <div>
+                <h2 className="text-lg font-semibold text-amber-800 mb-2">Recent Orders</h2>
+                {loadingData ? (
+                  <div className="bg-amber-50 p-4 rounded-md flex justify-center">
+                    <div className="animate-pulse w-full">
+                      <div className="h-8 bg-amber-200/50 mb-3 rounded"></div>
+                      <div className="h-8 bg-amber-200/50 mb-3 rounded"></div>
+                      <div className="h-8 bg-amber-200/50 rounded"></div>
+                    </div>
+                  </div>
+                ) : orders.length > 0 ? (
+                  <div className="bg-amber-50 p-4 rounded-md">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-amber-200">
+                            <th className="px-4 py-2 text-left">Order ID</th>
+                            <th className="px-4 py-2 text-left">Date</th>
+                            <th className="px-4 py-2 text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {orders.slice(0, 3).map(order => (
+                            <tr key={order.id} className="border-b border-amber-100">
+                              <td className="px-4 py-3">#{order.id.substring(0, 8)}</td>
+                              <td className="px-4 py-3">{new Date(order.created_at).toLocaleDateString()}</td>
+                              <td className="px-4 py-3 text-right">${order.total_amount ? order.total_amount.toFixed(2) : '0.00'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="mt-3 text-right">
+                      <button
+                        onClick={() => setActiveTab('orders')}
+                        className="text-amber-800 hover:text-amber-700 text-sm font-medium"
+                      >
+                        View all orders →
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 p-4 rounded-md text-gray-600">
+                    You haven&apos;t placed any orders yet.
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h2 className="text-lg font-semibold text-amber-800 mb-2">Favorite Items</h2>
+                {loadingData ? (
+                  <div className="bg-amber-50 p-4 rounded-md flex justify-center">
+                    <div className="animate-pulse w-full">
+                      <div className="h-8 bg-amber-200/50 mb-3 rounded"></div>
+                      <div className="h-8 bg-amber-200/50 mb-3 rounded"></div>
+                    </div>
+                  </div>
+                ) : favorites.length > 0 ? (
+                  <div className="bg-amber-50 p-4 rounded-md">
+                    <div className="space-y-2">
+                      {favorites.slice(0, 3).map(favorite => (
+                        <div key={favorite.id} className="flex items-center justify-between border-b border-amber-100 pb-2">
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 bg-amber-200 rounded-md mr-3 overflow-hidden relative">
+                              {favorite.products?.image_url ? (
+                                <Image
+                                  src={favorite.products.image_url}
+                                  alt={favorite.products.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="flex items-center justify-center h-full text-amber-800">
+                                  ☕
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-medium">{favorite.products?.name || 'Product'}</p>
+                              <p className="text-xs text-gray-600">{favorite.products?.category || 'Category'}</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => handleRemoveFavorite(favorite.id)}
+                            className="text-amber-800 hover:text-amber-700 text-sm"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 text-right">
+                      <button
+                        onClick={() => setActiveTab('favorites')}
+                        className="text-amber-800 hover:text-amber-700 text-sm font-medium"
+                      >
+                        View all favorites →
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 p-4 rounded-md text-gray-600">
+                    You haven&apos;t added any favorites yet. Browse our products and click the heart icon to add favorites.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {activeTab === 'favorites' && (
             <div>
-              <h2 className="text-lg font-semibold text-amber-800 mb-2">Recent Orders</h2>
-              {orders.length > 0 ? (
+              <h2 className="text-lg font-semibold text-amber-800 mb-4">Your Favorite Items</h2>
+              {loadingData ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="bg-amber-50 p-4 rounded-md animate-pulse">
+                      <div className="w-full h-40 bg-amber-200/50 rounded-md mb-4"></div>
+                      <div className="h-6 bg-amber-200/50 rounded mb-2 w-3/4"></div>
+                      <div className="h-4 bg-amber-200/50 rounded w-1/2"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : favorites.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {favorites.map(favorite => (
+                    <div key={favorite.id} className="bg-amber-50 p-4 rounded-md shadow-sm">
+                      <div className="w-full h-40 bg-amber-200 rounded-md mb-4 relative overflow-hidden">
+                        {favorite.products?.image_url ? (
+                          <Image
+                            src={favorite.products.image_url}
+                            alt={favorite.products.name}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-amber-800 text-4xl">
+                            ☕
+                          </div>
+                        )}
+                      </div>
+                      <h3 className="font-semibold text-amber-900 mb-1">{favorite.products?.name || 'Product'}</h3>
+                      <p className="text-sm text-gray-600 mb-3">{favorite.products?.category || 'Category'}</p>
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">${favorite.products?.price ? favorite.products.price.toFixed(2) : '0.00'}</span>
+                        <div className="space-x-2">
+                          <button 
+                            onClick={() => handleRemoveFavorite(favorite.id)}
+                            className="px-3 py-1 border border-amber-800 text-amber-800 rounded hover:bg-amber-800 hover:text-white text-sm transition-colors"
+                          >
+                            Remove
+                          </button>
+                          <Link
+                            href={`/order?product=${favorite.products?.id}`}
+                            className="px-3 py-1 bg-amber-800 text-white rounded hover:bg-amber-700 text-sm transition-colors"
+                          >
+                            Order
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-amber-50 p-8 rounded-lg text-center">
+                  <div className="mb-4 text-amber-800 text-5xl">☕</div>
+                  <h3 className="text-xl font-semibold text-amber-900 mb-2">No Favorites Yet</h3>
+                  <p className="text-gray-600 mb-6">
+                    You haven&apos;t added any products to your favorites list.
+                    Browse our products and click the heart icon to add items you love.
+                  </p>
+                  <Link
+                    href="/order"
+                    className="px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition-colors"
+                  >
+                    Browse Products
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {activeTab === 'orders' && (
+            <div>
+              <h2 className="text-lg font-semibold text-amber-800 mb-4">Your Order History</h2>
+              {loadingData ? (
+                <div className="bg-amber-50 p-4 rounded-md">
+                  <div className="animate-pulse w-full">
+                    <div className="h-8 bg-amber-200/50 mb-3 rounded"></div>
+                    <div className="h-8 bg-amber-200/50 mb-3 rounded"></div>
+                    <div className="h-8 bg-amber-200/50 rounded"></div>
+                  </div>
+                </div>
+              ) : orders.length > 0 ? (
                 <div className="bg-amber-50 p-4 rounded-md">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -165,255 +476,125 @@ export default function ProfilePage() {
                         <tr className="border-b border-amber-200">
                           <th className="px-4 py-2 text-left">Order ID</th>
                           <th className="px-4 py-2 text-left">Date</th>
-                          <th className="px-4 py-2 text-left">Items</th>
                           <th className="px-4 py-2 text-right">Total</th>
+                          <th className="px-4 py-2 text-right">Status</th>
+                          <th className="px-4 py-2 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {orders.slice(0, 3).map(order => (
+                        {orders.map(order => (
                           <tr key={order.id} className="border-b border-amber-100">
-                            <td className="px-4 py-3">{order.id}</td>
-                            <td className="px-4 py-3">{order.date}</td>
-                            <td className="px-4 py-3">{order.items.join(', ')}</td>
-                            <td className="px-4 py-3 text-right">${order.total.toFixed(2)}</td>
+                            <td className="px-4 py-3">#{order.id.substring(0, 8)}</td>
+                            <td className="px-4 py-3">{new Date(order.created_at).toLocaleDateString()}</td>
+                            <td className="px-4 py-3 text-right">${order.total_amount ? order.total_amount.toFixed(2) : '0.00'}</td>
+                            <td className="px-4 py-3 text-right">
+                              <span className={`inline-block px-2 py-1 rounded text-xs ${
+                                order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                order.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                                'bg-amber-100 text-amber-800'
+                              }`}>
+                                {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Pending'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <button className="text-amber-800 hover:text-amber-700 underline text-xs">
+                                View Details
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  <div className="mt-3 text-right">
-                    <button
-                      onClick={() => setActiveTab('orders')}
-                      className="text-amber-800 hover:text-amber-700 text-sm font-medium"
-                    >
-                      View all orders →
-                    </button>
-                  </div>
                 </div>
               ) : (
-                <div className="bg-amber-50 p-4 rounded-md text-gray-600">
-                  You haven&apos;t placed any orders yet.
+                <div className="bg-amber-50 p-8 rounded-lg text-center">
+                  <div className="mb-4 text-amber-800 text-5xl">📦</div>
+                  <h3 className="text-xl font-semibold text-amber-900 mb-2">No Orders Yet</h3>
+                  <p className="text-gray-600 mb-6">
+                    You haven&apos;t placed any orders yet.
+                    Start your coffee journey by placing your first order!
+                  </p>
+                  <Link
+                    href="/order"
+                    className="px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition-colors"
+                  >
+                    Place Your First Order
+                  </Link>
                 </div>
               )}
             </div>
-
+          )}
+          
+          {activeTab === 'settings' && (
             <div>
-              <h2 className="text-lg font-semibold text-amber-800 mb-2">Recommendations For You</h2>
-              <div className="bg-amber-50 p-4 rounded-md">
-                <div className="space-y-3">
-                  {preferences.suggestedItems.map(item => (
-                    <div key={item.id} className="flex items-center justify-between border-b border-amber-100 pb-2">
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-xs text-gray-600">{item.reason}</p>
-                      </div>
-                      <button className="text-amber-800 hover:text-amber-700 text-sm">
-                        Order Now
-                      </button>
+              <h2 className="text-lg font-semibold text-amber-800 mb-4">Account Settings</h2>
+              <div className="bg-amber-50 p-6 rounded-lg">
+                <div className="mb-6">
+                  <h3 className="text-md font-medium text-amber-900 mb-4">Email Notifications</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <input 
+                        type="checkbox" 
+                        id="notify-orders" 
+                        className="h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                      />
+                      <label htmlFor="notify-orders" className="ml-2 text-gray-700">
+                        Order Updates
+                      </label>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'orders':
-        return (
-          <div>
-            <h2 className="text-lg font-semibold text-amber-800 mb-4">Your Order History</h2>
-            {orders.length > 0 ? (
-              <div className="bg-amber-50 p-4 rounded-md">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-amber-200">
-                        <th className="px-4 py-2 text-left">Order ID</th>
-                        <th className="px-4 py-2 text-left">Date</th>
-                        <th className="px-4 py-2 text-left">Items</th>
-                        <th className="px-4 py-2 text-right">Total</th>
-                        <th className="px-4 py-2 text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orders.map(order => (
-                        <tr key={order.id} className="border-b border-amber-100">
-                          <td className="px-4 py-3">{order.id}</td>
-                          <td className="px-4 py-3">{order.date}</td>
-                          <td className="px-4 py-3">{order.items.join(', ')}</td>
-                          <td className="px-4 py-3 text-right">${order.total.toFixed(2)}</td>
-                          <td className="px-4 py-3 text-right">
-                            <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
-                              {order.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-amber-50 p-4 rounded-md text-gray-600">
-                You haven&apos;t placed any orders yet.
-              </div>
-            )}
-          </div>
-        );
-
-      case 'favorites':
-        return (
-          <div>
-            <h2 className="text-lg font-semibold text-amber-800 mb-4">Your Favorite Items</h2>
-            
-            {updateStatus.message && (
-              <div className={`mb-4 p-3 rounded ${updateStatus.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                {updateStatus.message}
-              </div>
-            )}
-            
-            {favorites.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {favorites.map(item => (
-                  <div key={item.id} className="bg-amber-50 p-4 rounded-md relative">
-                    <button 
-                      onClick={() => handleRemoveFavorite(item.id)}
-                      className="absolute top-2 right-2 text-gray-500 hover:text-amber-800"
-                      aria-label="Remove from favorites"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                    <div className="flex items-center mb-3">
-                      <div className="w-12 h-12 bg-amber-200 rounded-full flex items-center justify-center mr-3">
-                        <Image src={item.image} alt={item.name} width={24} height={24} />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">{item.name}</h3>
-                        <p className="text-sm text-gray-600">{item.category}</p>
-                      </div>
+                    <div className="flex items-center">
+                      <input 
+                        type="checkbox" 
+                        id="notify-promos" 
+                        className="h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                      />
+                      <label htmlFor="notify-promos" className="ml-2 text-gray-700">
+                        Promotions and Deals
+                      </label>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold">${item.price.toFixed(2)}</span>
-                      <button className="text-amber-800 hover:text-amber-700 text-sm">
-                        Order Now
-                      </button>
+                    <div className="flex items-center">
+                      <input 
+                        type="checkbox" 
+                        id="notify-news" 
+                        className="h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                      />
+                      <label htmlFor="notify-news" className="ml-2 text-gray-700">
+                        Art Coffee News
+                      </label>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="bg-amber-50 p-4 rounded-md text-gray-600">
-                You don&apos;t have any favorite items yet.
-              </div>
-            )}
-          </div>
-        );
-
-      default:
-        return <div>Select a tab to view content</div>;
-    }
-  };
-
-  return (
-    <ProfileFetcherWithRenderProps>
-      {(profile) => {
-        // Update the lastProfile state when the profile changes
-        if (profile && (!lastProfile || lastProfile.id !== profile.id)) {
-          // Use setTimeout to avoid state updates during render
-          setTimeout(() => setLastProfile(profile), 0);
-        }
-        
-        // If not authenticated, redirect to auth page
-        if (!profile && mounted) {
-          // Use setTimeout to avoid state updates during render
-          setTimeout(() => router.push('/auth'), 0);
-          return (
-            <div className="flex flex-col min-h-screen">
-              <Navigation />
-              <div className="flex-grow flex items-center justify-center">
-                <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-              </div>
-              <Footer />
-            </div>
-          );
-        }
-
-        return (
-          <div className="flex flex-col min-h-screen">
-            <Navigation />
-            
-            <main className="flex-grow container mx-auto px-4 py-8">
-              <div className="max-w-4xl mx-auto">
-                <header className="bg-white rounded-lg shadow p-6 mb-6">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <h1 className="text-2xl font-bold text-amber-900">Your Profile</h1>
-                      <p className="text-gray-600">Manage your account and preferences</p>
-                    </div>
-                    <div className="mt-4 md:mt-0">
-                      <button
-                        onClick={handleSignOut}
-                        className="px-4 py-2 border border-amber-800 text-amber-900 rounded-md hover:bg-amber-100 transition-colors"
-                      >
-                        Sign Out
-                      </button>
-                    </div>
-                  </div>
-                </header>
+                </div>
                 
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                  <div className="border-b border-gray-200">
-                    <nav className="flex overflow-x-auto">
-                      <button
-                        onClick={() => setActiveTab('overview')}
-                        className={`px-4 py-4 text-sm font-medium whitespace-nowrap ${
-                          activeTab === 'overview'
-                            ? 'border-b-2 border-amber-800 text-amber-800'
-                            : 'text-gray-600 hover:text-amber-800'
-                        }`}
-                      >
-                        Account Overview
-                      </button>
-                      <button
-                        onClick={() => setActiveTab('orders')}
-                        className={`px-4 py-4 text-sm font-medium whitespace-nowrap ${
-                          activeTab === 'orders'
-                            ? 'border-b-2 border-amber-800 text-amber-800'
-                            : 'text-gray-600 hover:text-amber-800'
-                        }`}
-                      >
-                        Order History
-                      </button>
-                      <button
-                        onClick={() => setActiveTab('favorites')}
-                        className={`px-4 py-4 text-sm font-medium whitespace-nowrap ${
-                          activeTab === 'favorites'
-                            ? 'border-b-2 border-amber-800 text-amber-800'
-                            : 'text-gray-600 hover:text-amber-800'
-                        }`}
-                      >
-                        Favorites
-                      </button>
-                    </nav>
-                  </div>
-                  
-                  <div className="p-6">
-                    {profile ? renderTabContent(profile) : (
-                      <div className="flex justify-center py-8">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-900"></div>
-                      </div>
-                    )}
+                <div className="mb-6">
+                  <h3 className="text-md font-medium text-amber-900 mb-4">Security</h3>
+                  <button className="px-4 py-2 bg-white border border-amber-800 text-amber-800 rounded hover:bg-amber-800 hover:text-white transition-colors">
+                    Change Password
+                  </button>
+                </div>
+                
+                <div>
+                  <h3 className="text-md font-medium text-amber-900 mb-4">Privacy</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <input 
+                        type="checkbox" 
+                        id="privacy-tracking" 
+                        className="h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                      />
+                      <label htmlFor="privacy-tracking" className="ml-2 text-gray-700">
+                        Allow order history tracking for recommendations
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
-            </main>
-            
-            <Footer />
-          </div>
-        );
-      }}
-    </ProfileFetcherWithRenderProps>
+            </div>
+          )}
+        </div>
+      </main>
+      
+      <Footer />
+    </div>
   );
 }
