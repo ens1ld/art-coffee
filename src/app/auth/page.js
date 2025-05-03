@@ -46,45 +46,96 @@ export default function AuthPage() {
           return;
         }
 
+        if (!session) {
+          setUserSession(null);
+          setSessionChecked(true);
+          return;
+        }
+
         setUserSession(session);
         
-        if (session) {
-          // Get user profile to determine role
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('role, approved')
-            .eq('id', session.user.id)
-            .single();
+        // Get user profile to determine role
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role, approved')
+          .eq('id', session.user.id)
+          .single();
 
-          if (profileError) {
-            console.error('Error fetching profile:', profileError);
+        if (profileError && profileError.code === 'PGRST116') {
+          console.log('Profile not found during session check, creating one...');
+          
+          // Create a new profile for the user
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert([{ 
+              id: session.user.id, 
+              email: session.user.email,
+              role: 'user',
+              approved: true
+            }]);
+            
+          if (insertError) {
+            console.error('Error creating profile:', insertError);
             setSessionChecked(true);
             return;
           }
+          
+          // Redirect to home page
+          window.location.href = '/';
+          return;
+        } else if (profileError) {
+          console.error('Error fetching profile:', profileError);
+          setSessionChecked(true);
+          return;
+        }
 
-          if (profile) {
-            // For admin users, check if they're approved
-            if (profile.role === 'admin' && !profile.approved) {
-              router.push('/pending-approval');
-              return;
-            }
-            
-            // Redirect based on role
-            switch (profile.role) {
-              case 'superadmin':
-                router.push('/superadmin');
-                break;
-              case 'admin':
-                router.push('/admin');
-                break;
-              default:
-                router.push(getRedirectPath());
-            }
+        // Clear redirection if already on this page for too long
+        const startTime = sessionStorage.getItem('redirectStart');
+        const now = new Date().getTime();
+        
+        if (startTime && (now - parseInt(startTime) > 5000)) {
+          console.log('Redirection taking too long, forcing navigation');
+          sessionStorage.removeItem('redirectStart');
+          
+          // Force direct navigation instead of router
+          if (profile.role === 'admin' && !profile.approved) {
+            window.location.href = '/pending-approval';
+          } else if (profile.role === 'superadmin') {
+            window.location.href = '/superadmin';
+          } else if (profile.role === 'admin') {
+            window.location.href = '/admin';
           } else {
-            router.push(getRedirectPath());
+            window.location.href = '/';
+          }
+          return;
+        }
+
+        // Set start time for redirection timeout
+        if (!startTime) {
+          sessionStorage.setItem('redirectStart', new Date().getTime().toString());
+        }
+
+        // For admin users, check if they're approved
+        if (profile && profile.role === 'admin' && !profile.approved) {
+          router.push('/pending-approval');
+          return;
+        }
+        
+        // Redirect based on role
+        if (profile) {
+          switch (profile.role) {
+            case 'superadmin':
+              router.push('/superadmin');
+              break;
+            case 'admin':
+              router.push('/admin');
+              break;
+            default:
+              router.push(getRedirectPath());
+              break;
           }
         } else {
-          setSessionChecked(true);
+          router.push(getRedirectPath());
         }
       } catch (err) {
         console.error('Unexpected error during session check:', err);

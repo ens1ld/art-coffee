@@ -1,76 +1,64 @@
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 
-// Define protected routes that require authentication for actions/transactions
-const TRANSACTION_ROUTES = {
-  '/order/checkout': ['user', 'admin', 'superadmin'],
-  '/gift-card/purchase': ['user', 'admin', 'superadmin'],
-  '/loyalty/redeem': ['user', 'admin', 'superadmin'],
-  '/bulk-order/submit': ['user', 'admin', 'superadmin'],
-};
+// Define routes that don't need authentication at all
+const PUBLIC_ROUTES = ['/', '/auth', '/auth/callback', '/super', '/about', '/contact', '/menu'];
 
-// Define admin routes with their required roles
-const ADMIN_ROUTES = {
+// Define protected routes that require authentication
+const PROTECTED_ROUTES = {
   '/admin': ['admin', 'superadmin'],
   '/superadmin': ['superadmin'],
-};
-
-// Define role-specific redirects
-const ROLE_REDIRECTS = {
-  'user': '/order',
-  'admin': '/admin',
-  'superadmin': '/superadmin'
+  '/order': ['user', 'admin', 'superadmin'],
+  '/gift-card': ['user', 'admin', 'superadmin'],
+  '/loyalty': ['user', 'admin', 'superadmin'],
+  '/bulk-order': ['user', 'admin', 'superadmin'],
 };
 
 export async function middleware(request) {
+  // Skip non-page routes (static files, api routes, etc.)
+  const { pathname } = request.nextUrl;
+  
+  if (
+    pathname.startsWith('/_next') || 
+    pathname.startsWith('/api') ||
+    pathname.includes('.') ||
+    pathname === '/favicon.ico'
+  ) {
+    return NextResponse.next();
+  }
+
   const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req: request, res });
 
-  // Get the session
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-  
-  if (sessionError) {
-    console.error('Session error in middleware:', sessionError);
-    return res;
-  }
+  try {
+    // Get the session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('Session error in middleware:', sessionError);
+      return res;
+    }
 
-  // Define protected routes and their required roles
-  const protectedRoutes = {
-    '/admin': ['admin', 'superadmin'],
-    '/superadmin': ['superadmin'],
-    '/order': ['user', 'admin', 'superadmin'],
-    '/gift-card': ['user', 'admin', 'superadmin'],
-    '/loyalty': ['user', 'admin', 'superadmin'],
-    '/bulk-order': ['user', 'admin', 'superadmin'],
-  };
+    // Allow public routes for everyone, regardless of auth status
+    if (PUBLIC_ROUTES.some(route => pathname === route || pathname.startsWith(`${route}/`))) {
+      return res;
+    }
 
-  const { pathname } = request.nextUrl;
+    // Check if the requested path is a protected route
+    const isProtectedRoute = Object.keys(PROTECTED_ROUTES).some(route => 
+      pathname.startsWith(route)
+    );
 
-  // Special cases - allow these routes
-  if (pathname === '/auth/callback' || pathname === '/super' || pathname.startsWith('/_next') || pathname.includes('.')) {
-    return res;
-  }
-
-  // If user is authenticated and tries to access auth page, redirect to home
-  if (pathname === '/auth' && session) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  // Check if the requested path is a protected route
-  const isProtectedRoute = Object.keys(protectedRoutes).some(route => 
-    pathname.startsWith(route)
-  );
-
-  if (isProtectedRoute) {
-    // If user is not authenticated, redirect to auth page
-    if (!session) {
+    // If it's a protected route and there's no session, redirect to auth
+    if (isProtectedRoute && !session) {
       const redirectUrl = new URL('/auth', request.url);
       redirectUrl.searchParams.set('redirectTo', pathname);
       return NextResponse.redirect(redirectUrl);
     }
 
-    try {
-      // Get user's role from the session
+    // If user is authenticated, do role-based checks for protected routes
+    if (session && isProtectedRoute) {
+      // Get user's role from the database
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role, approved')
@@ -79,14 +67,15 @@ export async function middleware(request) {
       
       if (profileError) {
         console.error('Error fetching profile in middleware:', profileError);
-        // If we can't get the profile, let the request proceed and handle the error in the page
+        
+        // If we can't get the profile but user is authenticated,
+        // let them proceed (the page will handle any missing profile issues)
         return res;
       }
 
       if (!profile) {
-        console.warn('No profile found for user in middleware');
-        // If user has no profile, redirect to auth to potentially recreate the profile
-        return NextResponse.redirect(new URL('/auth', request.url));
+        console.warn('No profile found for authenticated user in middleware');
+        return res;
       }
 
       const userRole = profile.role || 'user';
@@ -98,45 +87,24 @@ export async function middleware(request) {
       }
 
       // Check if user has required role for the route
-      const requiredRoles = protectedRoutes[Object.keys(protectedRoutes).find(route => 
+      const routePrefix = Object.keys(PROTECTED_ROUTES).find(route => 
         pathname.startsWith(route)
-      )];
-
-      if (!requiredRoles.includes(userRole)) {
-        return NextResponse.redirect(new URL('/not-authorized', request.url));
-      }
-    } catch (error) {
-      console.error('Unexpected error in middleware:', error);
-      // In case of any error, allow the request to proceed and let the page handle it
-      return res;
-    }
-  }
-
-  // If user is authenticated and tries to access pending-approval but is not a pending admin
-  if (pathname === '/pending-approval' && session) {
-    try {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role, approved')
-        .eq('id', session.user.id)
-        .single();
+      );
       
-      if (profileError) {
-        console.error('Error fetching profile for pending-approval check:', profileError);
-        return res;
+      if (routePrefix) {
+        const requiredRoles = PROTECTED_ROUTES[routePrefix];
+        if (!requiredRoles.includes(userRole)) {
+          return NextResponse.redirect(new URL('/not-authorized', request.url));
+        }
       }
-      
-      // If not an admin or already approved, redirect
-      if (!profile || profile.role !== 'admin' || profile.approved) {
-        return NextResponse.redirect(new URL('/', request.url));
-      }
-    } catch (error) {
-      console.error('Error checking pending approval status:', error);
-      return res;
     }
-  }
 
-  return res;
+    return res;
+  } catch (error) {
+    console.error('Unexpected error in middleware:', error);
+    // In case of any error, allow the request to proceed and let the page handle it
+    return res;
+  }
 }
 
 // Only run middleware on specific paths

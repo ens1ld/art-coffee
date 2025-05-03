@@ -9,29 +9,36 @@ ALTER TABLE IF EXISTS order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS gift_cards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS loyalty_transactions ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (to avoid errors)
+DROP POLICY IF EXISTS "Users can see their own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can update their own profile except role" ON profiles;
+DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
+DROP POLICY IF EXISTS "Admins can update approved status for admin accounts" ON profiles;
+DROP POLICY IF EXISTS "Superadmins can update any profile" ON profiles;
+
 -- Policies for profiles table
 
 -- Everyone can see their own profile
-CREATE POLICY IF NOT EXISTS "Users can see their own profile"
+CREATE POLICY "Users can see their own profile"
 ON profiles
 FOR SELECT
 USING (auth.uid() = id);
 
 -- Users can update their own profile but not change role
-CREATE POLICY IF NOT EXISTS "Users can update their own profile except role"
+CREATE POLICY "Users can update their own profile except role"
 ON profiles
 FOR UPDATE
 USING (auth.uid() = id)
 WITH CHECK (auth.uid() = id AND role = (SELECT role FROM profiles WHERE id = auth.uid()));
 
 -- Admins can view all profiles
-CREATE POLICY IF NOT EXISTS "Admins can view all profiles"
+CREATE POLICY "Admins can view all profiles"
 ON profiles
 FOR SELECT
 USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'superadmin')));
 
 -- Admins can update approved status for admin accounts
-CREATE POLICY IF NOT EXISTS "Admins can update approved status for admin accounts"
+CREATE POLICY "Admins can update approved status for admin accounts"
 ON profiles
 FOR UPDATE
 USING (
@@ -44,7 +51,7 @@ WITH CHECK (
 );
 
 -- Superadmins can update any profile
-CREATE POLICY IF NOT EXISTS "Superadmins can update any profile"
+CREATE POLICY "Superadmins can update any profile"
 ON profiles
 FOR UPDATE
 USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'superadmin'));
