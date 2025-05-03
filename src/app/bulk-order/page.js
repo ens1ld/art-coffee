@@ -12,7 +12,7 @@ export default function BulkOrderPage() {
       name: 'Premium Coffee Beans (5kg)',
       price: 120.00,
       description: 'Our signature coffee beans, perfect for offices and small cafes.',
-      image: '/images/coffee-beans-bulk.jpg',
+      image: '/src/components/images/cards/3.png',
       bulk_only: true
     },
     {
@@ -20,7 +20,7 @@ export default function BulkOrderPage() {
       name: 'Coffee Brewing Equipment Set',
       price: 350.00,
       description: 'Complete set for professional brewing, includes grinder and filters.',
-      image: '/images/brewing-equipment.jpg',
+      image: '/src/components/images/interior.png',
       bulk_only: true
     },
     {
@@ -28,7 +28,7 @@ export default function BulkOrderPage() {
       name: 'Signature Blend (10kg)',
       price: 220.00,
       description: 'Our most popular blend, dark roast with notes of chocolate and caramel.',
-      image: '/images/signature-blend.jpg',
+      image: '/src/components/images/cards/1.png',
       bulk_only: true
     },
     {
@@ -36,7 +36,7 @@ export default function BulkOrderPage() {
       name: 'Disposable Cups (500 count)',
       price: 75.00,
       description: 'Eco-friendly disposable cups with lids, suitable for hot and cold drinks.',
-      image: '/images/disposable-cups.jpg',
+      image: '/src/components/images/stive-kupash.png',
       bulk_only: true
     },
     {
@@ -44,7 +44,7 @@ export default function BulkOrderPage() {
       name: 'Gift Card Bundle (25 x $20)',
       price: 450.00,
       description: 'Corporate gift card bundle with custom branding options.',
-      image: '/images/gift-cards-bulk.jpg',
+      image: '/src/components/images/cards/4.png',
       bulk_only: true
     },
     {
@@ -52,7 +52,7 @@ export default function BulkOrderPage() {
       name: 'Catering Coffee Service',
       price: 200.00,
       description: 'Coffee catering for events and meetings, includes setup and service.',
-      image: '/images/catering-service.jpg',
+      image: '/src/components/images/service.png',
       bulk_only: true
     }
   ]);

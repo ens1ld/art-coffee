@@ -59,7 +59,7 @@ export default function AboutPage() {
             <div className="bg-card-bg border border-card-border rounded-xl p-6">
               <div className="relative w-full h-64">
                 <Image
-                  src="/images/coffee-shop.jpg"
+                  src="/src/components/images/interior.png"
                   alt="Art Coffee Shop Interior"
                   fill
                   className="object-cover rounded-lg"
