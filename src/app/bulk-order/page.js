@@ -220,7 +220,7 @@ export default function BulkOrderPage() {
           <div className="mb-8 p-4 bg-error/10 border border-error rounded-lg">
             <h3 className="font-medium text-lg text-error mb-2">Error Processing Order</h3>
             <p className="text-text-secondary">
-              Please ensure you've selected at least one product and filled in all required fields.
+              Please ensure you&apos;ve selected at least one product and filled in all required fields.
             </p>
           </div>
         )}
@@ -423,7 +423,7 @@ export default function BulkOrderPage() {
                 </svg>
               </div>
               <h3 className="font-medium text-lg mb-2">Custom Orders</h3>
-              <p className="text-text-secondary">Can't find what you need? Contact us for customized bulk orders.</p>
+              <p className="text-text-secondary">Can&apos;t find what you need? Contact us for customized bulk orders.</p>
             </div>
           </div>
         </section>

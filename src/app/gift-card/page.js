@@ -142,7 +142,7 @@ export default function GiftCardPage() {
               <div className="mb-6 p-4 bg-success/10 border border-success rounded-lg">
                 <h3 className="font-medium text-lg text-success mb-2">Gift Card Sent Successfully!</h3>
                 <p className="text-text-secondary">
-                  Your gift card has been sent to the recipient's email.
+                  Your gift card has been sent to the recipient&apos;s email.
                 </p>
               </div>
             )}
@@ -178,7 +178,7 @@ export default function GiftCardPage() {
               </div>
               
               <div>
-                <label htmlFor="email" className="label">Recipient's Email</label>
+                <label htmlFor="email" className="label">Recipient&apos;s Email</label>
                 <input
                   id="email"
                   type="email"
@@ -248,7 +248,7 @@ export default function GiftCardPage() {
                 </svg>
               </div>
               <h3 className="font-medium text-lg mb-2">Instant Delivery</h3>
-              <p className="text-text-secondary">The gift card is delivered to your recipient's email.</p>
+              <p className="text-text-secondary">The gift card is delivered to your recipient&apos;s email.</p>
             </div>
             
             <div className="text-center">

@@ -211,7 +211,7 @@ export default function LoyaltyPage() {
               </div>
             ) : (
               <p className="text-center py-6 text-text-secondary bg-white border border-border rounded-lg">
-                You don't have any transactions yet. Start shopping to earn points!
+                You don&apos;t have any transactions yet. Start shopping to earn points!
               </p>
             )}
           </section>
