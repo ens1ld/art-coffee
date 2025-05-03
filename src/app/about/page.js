@@ -5,7 +5,7 @@ import Image from 'next/image';
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Navigation Bar */}
+      <Navigation />
       <nav className="bg-card-bg border-b border-card-border">
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="text-2xl font-bold text-primary">

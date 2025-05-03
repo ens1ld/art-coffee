@@ -161,12 +161,12 @@ export default function ContactPage() {
                   Visit Us
                 </h3>
                 <p className="text-secondary mb-2">
-                  123 Coffee Street<br />
-                  City, State 12345
+                  Lagja Emin Matraxhiu<br />
+                  Elbasan, Albania, 3001
                 </p>
                 <p className="text-secondary">
-                  Open Monday - Friday: 7am - 7pm<br />
-                  Saturday - Sunday: 8am - 6pm
+                  Open Monday - Friday: 7am - 11pm<br />
+                  Saturday - Sunday: 8am - 10pm
                 </p>
               </div>
 
@@ -175,8 +175,8 @@ export default function ContactPage() {
                   Contact Information
                 </h3>
                 <p className="text-secondary mb-2">
-                  Email: info@artcoffee.com<br />
-                  Phone: (123) 456-7890
+                  Email: art-kafe@live.com<br />
+                  Phone: (+355) 69 875 6167
                 </p>
                 <p className="text-secondary">
                   For bulk orders or special events, please contact us directly.
@@ -237,14 +237,14 @@ export default function ContactPage() {
             <div>
               <h3 className="text-lg font-semibold text-primary mb-4">Contact Us</h3>
               <p className="text-secondary">
-                Email: info@artcoffee.com<br />
-                Phone: (123) 456-7890<br />
-                Address: 123 Coffee Street, City
+                Email: art-kafe@live.com<br />
+                Phone: (+355)69 875 6167<br />
+                Address: Lagja Emin Matraxhiu, Elbasan, Albania
               </p>
             </div>
           </div>
           <div className="mt-8 text-center text-secondary">
-            <p>© 2024 Art Coffee. All rights reserved.</p>
+            <p>© 2025 Art Coffee. All rights reserved.</p>
           </div>
         </div>
       </footer>
