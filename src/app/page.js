@@ -54,8 +54,8 @@ export default function HomePage() {
             </div>
             <div className="relative h-[400px] rounded-card overflow-hidden shadow-card">
         <Image
-                src="../components/images/stive-kupash.png"
-                alt="Art Coffee Cup"
+                src="../components/images/logo.png"
+                alt="Art Coffee"
                 fill
                 className="object-cover"
           priority
