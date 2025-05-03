@@ -56,7 +56,7 @@ export default function HomePage() {
             </div>
             <div className="relative h-[400px] rounded-card overflow-hidden shadow-card">
         <Image
-                src="/public/images/logo.png"
+                src="/images/cards/1.png"
                 alt="Art Coffee Cup"
                 fill
                 className="object-cover"
@@ -139,7 +139,7 @@ export default function HomePage() {
             <div className="card h-full flex flex-col">
               <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
                 <Image 
-                  src="/public/images/cards/2.png" 
+                  src="/images/cards/2.png" 
                   alt="Order Coffee"
                   fill
                   className="object-cover"
@@ -157,7 +157,7 @@ export default function HomePage() {
             <div className="card h-full flex flex-col">
               <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
                 <Image 
-                  src="/public/images/cards/4.png" 
+                  src="/images/cards/4.png" 
                   alt="Gift Cards"
                   fill
                   className="object-cover"
@@ -175,7 +175,7 @@ export default function HomePage() {
             <div className="card h-full flex flex-col">
               <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
                 <Image 
-                  src="/public/images/cards/5.png" 
+                  src="/images/cards/5.png" 
                   alt="Loyalty Program"
                   fill
                   className="object-cover"
@@ -193,7 +193,7 @@ export default function HomePage() {
             <div className="card h-full flex flex-col">
               <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
           <Image
-                  src="/src/components/images/cards/3.png" 
+                  src="/images/cards/3.png" 
                   alt="Bulk Orders"
                   fill
                   className="object-cover"
