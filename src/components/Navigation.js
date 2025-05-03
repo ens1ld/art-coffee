@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -24,7 +25,7 @@ export default function Navigation() {
       <div className="container mx-auto px-4 flex justify-between items-center">
         <div className="flex items-center">
           <Link href="/" className="text-xl font-bold text-amber-900 flex items-center">
-            <img src="/logo.svg" alt="Art Coffee" width="30" height="30" className="mr-2" />
+            <Image src="/logo.svg" alt="Art Coffee" width={30} height={30} className="mr-2" />
             Art Coffee
           </Link>
         </div>
