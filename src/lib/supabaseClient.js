@@ -28,8 +28,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 (async function testConnection() {
   try {
     console.log('Testing Supabase connection...');
-    // Simple health check query
-    const { data, error } = await supabase.from('profiles').select('count');
+    // Only try to select the current user's profile (safe for RLS)
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .limit(1);
     
     if (error) {
       console.error('Supabase connection test failed:', error);
