@@ -78,77 +78,28 @@ function AuthContent() {
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-    
-    if (password !== confirmPassword) {
-      setError("Passwords don't match");
-      return;
-    }
-    
     setError('');
     setMessage('');
     setLoading(true);
-    
+
     try {
       const role = isAdminSignUp ? 'admin' : 'user';
-      
-      console.log(`Signing up as ${role}...`);
-      
-      // Sign up the user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: {
-            role: role,
-          },
+          data: { role },
           emailRedirectTo: `${window.location.origin}/auth/callback`
-        },
-      });
-      
-      if (authError) throw authError;
-      
-      console.log('Auth signup successful:', authData);
-      
-      // Create a profile for the new user
-      if (authData.user) {
-        try {
-          console.log('Creating profile with role:', role);
-          
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              id: authData.user.id,
-              email: authData.user.email,
-              role: role,
-              approved: role === 'admin' ? false : true, // Admins need approval
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .select()
-            .single();
-          
-          if (profileError) {
-            console.error('Profile creation error:', profileError);
-            throw profileError;
-          }
-          
-          console.log('Profile created successfully:', profileData);
-        } catch (profileError) {
-          console.error('Error creating profile:', profileError);
-          // Continue anyway as middleware will create profile if needed
         }
-      }
-      
-      // Show confirmation message
-      setMessage(`Account created! ${authData.user.identities?.length === 0 ? 'You can now sign in.' : 'Check your email for the confirmation link.'}`);
+      });
+      if (authError) throw authError;
+      setMessage('Account created! Check your email for the confirmation link.');
+      setIsSignUp(false);
+      setIsAdminSignUp(false);
       setEmail('');
       setPassword('');
       setConfirmPassword('');
-      setIsSignUp(false);
-      setIsAdminSignUp(false);
-      
     } catch (error) {
-      console.error('Sign up error:', error);
       setError(error.message || 'An error occurred during sign up');
     } finally {
       setLoading(false);
@@ -160,92 +111,37 @@ function AuthContent() {
     setError('');
     setMessage('');
     setLoading(true);
-    
+
     try {
-      console.log('Signing in with email:', email);
-      
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      
       if (authError) throw authError;
-      
-      console.log('Sign in successful:', data);
-      
+
       // Fetch profile to check if it exists
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', data.user.id)
         .single();
-      
-      // If profile doesn't exist, create one
-      if (profileError && profileError.code === 'PGRST116') {
-        console.log('Profile not found, creating one...');
-        
-        try {
-          const { data: newProfile, error: insertError } = await supabase
-            .from('profiles')
-            .insert({
-              id: data.user.id,
-              email: data.user.email,
-              role: 'user',
-              approved: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .select()
-            .single();
-          
-          if (insertError) throw insertError;
-          
-          console.log('New profile created during signin:', newProfile);
-          
-          // Force direct navigation based on role
-          if (newProfile.role === 'admin' && newProfile.approved) {
-            window.location.href = '/admin';
-            return;
-          } else if (newProfile.role === 'superadmin') {
-            window.location.href = '/superadmin';
-            return;
-          } else {
-            window.location.href = '/profile';
-            return;
-          }
-        } catch (createError) {
-          console.error('Error creating profile during signin:', createError);
-        }
-      } else if (profileError) {
-        console.error('Error fetching profile:', profileError);
-      } else if (profileData) {
-        console.log('Profile found:', profileData);
-        
-        // Force direct navigation based on role
-        if (profileData.role === 'admin' && profileData.approved) {
-          window.location.href = '/admin';
-          return;
-        } else if (profileData.role === 'superadmin') {
-          window.location.href = '/superadmin';
-          return;
-        } else {
-          window.location.href = '/profile';
-          return;
-        }
+      if (profileError) {
+        setError('Profile not found. Please contact support.');
+        return;
       }
-      
-      // Refresh user and profile data and redirect through context
-      await refreshUserAndProfile();
-      
-      setMessage('Signed in successfully! Redirecting...');
-      
-      // Set a fallback timeout to force redirect in case the auth state listener doesn't trigger
-      redirectTimeout.current = setTimeout(() => {
-        console.log('Forcing redirect...');
+
+      // Force direct navigation based on role
+      if (profileData.role === 'admin' && profileData.approved) {
+        window.location.href = '/admin';
+        return;
+      } else if (profileData.role === 'superadmin') {
+        window.location.href = '/superadmin';
+        return;
+      } else {
         window.location.href = '/profile';
-      }, 3000);
+        return;
+      }
     } catch (error) {
-      console.error('Sign in error:', error);
       setError(error.message || 'Failed to sign in');
     } finally {
       setLoading(false);
