@@ -1,0 +1,76 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Art Coffee – Project Rules for Cursor
+
+1. Project Type:
+   - This is a **Next.js 13+** app using the **app/ directory**.
+   - Project is deployed on **Vercel**.
+   - Backend and authentication use **Supabase**.
+
+2. Pages and Structure:
+   - All routes are inside `src/app/`.
+   - Each page folder (e.g., `/order`, `/admin`) must have a `page.js` file with a default React export.
+   - Do NOT use `pages/` directory structure.
+
+3. Routing:
+   - Use only file-based routing via folders like `/order`, `/bulk-order`, etc.
+   - Every route should be linked from the homepage (`/`).
+
+4. Design & Functionality:
+   - Keep designs minimal and user-friendly.
+   - Use Tailwind CSS or inline CSS Modules only if necessary.
+   - Prioritize **working UI flows** (order, gift cards, loyalty points).
+   - No unnecessary complexity or external libraries unless I approve.
+
+5. Superadmin/Admin:
+   - Superadmin manages user accounts and sees more data.
+   - Admin dashboard handles order views, loyalty analytics, etc.
+   - These must be on different routes: `/superadmin` and `/admin`.
+
+6. No App:
+   - This is a **web-only** PWA, not a mobile app.
+   - All QR scanning must work via the browser.
+
+7. Data:
+   - All backend data is in Supabase.
+   - Tables: `users`, `products`, `orders`, `order_items`, `gift_cards`, `loyalty_transactions`.
+   - Respect foreign key relationships.
+
+8. When in doubt:
+   - Ask me before creating new pages, folders, or components.
+   - Never auto-install large libraries without confirming.
+
+9. Component Naming:
+   - Every component and file should use **PascalCase** or **kebab-case** (no spaces, no underscores).
+   - `page.js` must always be inside a folder matching the route (e.g., `/order/page.js` for `/order`).
+
+10. Homepage:
+   - The homepage (`src/app/page.js`) must:
+     - Link to all main pages: `/order`, `/bulk-order`, `/gift-card`, `/loyalty`, `/admin`, `/superadmin`.
+     - Contain a clean navigation section or buttons.
+     - Serve as the entry point during demo.
+
+11. Auth:
+   - Assume future implementation of **Supabase Auth** but **do NOT include login flows unless requested**.
+   - Allow page access without login for now, unless I ask to change it.
+
+12. Environment Variables:
+   - All Supabase keys and URLs must be stored in `.env.local`.
+   - Never hardcode private keys or project references in files.
+
+13. Vercel Compatibility:
+   - All routes must render correctly on Vercel (no dynamic routing unless explicitly configured).
+   - Avoid server-only logic in `page.js` or client-only code in server components.
+
+14. Deployment Testing:
+   - Assume I will test each page manually.
+   - Include a visible `<h1>` heading in every page for confirmation.
+   - Use test data placeholders in the UI until the database is fully connected.
+
+15. Development Style:
+   - Use **functional components only** (no class components).
+   - Keep code simple, readable, and hackathon-friendly — minimal nesting, clean layout, and short function blocks.
+
