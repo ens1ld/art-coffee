@@ -636,9 +636,12 @@ export default function OrderPage() {
                     {extraOptions.map((option) => (
                       <label
                         key={option.id}
+                        htmlFor={`extra-${option.id}`}
                         className="flex items-center space-x-2 cursor-pointer"
                       >
                         <input
+                          id={`extra-${option.id}`}
+                          name="extras"
                           type="checkbox"
                           checked={customization.extras.includes(option.id)}
                           onChange={() => handleCustomizationChange('extras', option.id)}
