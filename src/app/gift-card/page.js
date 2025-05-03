@@ -80,8 +80,9 @@ export default function GiftCardPage() {
         
         <div className="text-center mb-10">
           <p className="paragraph max-w-3xl mx-auto">
-            Gift the perfect brew! Share the Art Coffee experience with friends, family, or colleagues.
-            Our digital gift cards are delivered instantly and can be used for any in-store or online purchase.
+          Gift the Perfect Brew
+          Treat your friends, family, or colleagues to the Art Coffee experience.
+          Our digital gift cards are delivered instantly and can be redeemed for any in-store or online purchase.
           </p>
         </div>
         
