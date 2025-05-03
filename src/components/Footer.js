@@ -84,21 +84,21 @@ export default function Footer() {
               </li>
             </ul>
           </div>
-          
+      
+           
           <div>
             <h3 className="font-semibold text-lg text-primary mb-4">Contact</h3>
             <address className="not-italic">
-              <p className="text-text-secondary mb-2">123 Coffee Street</p>
-              <p className="text-text-secondary mb-2">New York, NY 10001</p>
+              <p className="text-text-secondary mb-2">Lagja Emin Matraxhiu</p>
+              <p className="text-text-secondary mb-2">Elbasan, Albania 3001</p>
               <p className="text-text-secondary mb-2">
                 <a href="tel:+12125551234" className="hover:text-primary transition-colors">
-                  (212) 555-1234
+                  (+355)  069 875 6167
                 </a>
               </p>
               <p className="text-text-secondary">
-                <a href="mailto:info@artcoffee.com" className="hover:text-primary transition-colors">
-                  info@artcoffee.com
-                </a>
+                <a href="mailto:art-kafe@live.com" className="hover:text-primary transition-colors">
+                art-kafe@live.com                </a>
               </p>
             </address>
           </div>
