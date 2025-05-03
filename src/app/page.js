@@ -59,18 +59,37 @@ export default function HomePage() {
                 At Art Coffee, we craft each cup with passion and precision, using only the finest beans sourced from around the world. Discover flavors that tell a story.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Link href="/order" className="btn-primary">
-                  Start Your Order
-                </Link>
-                <Link href="/menu" className="btn-secondary">
-                  View Menu
-                </Link>
-                
-                {/* Direct profile link for testing */}
-                {mounted && user && (
-                  <Link href="/profile" className="btn-secondary">
-                    My Profile
+                {/* Only show order/menu/profile links for normal users */}
+                {(!userRole || userRole === 'user') && (
+                  <>
+                    <Link href="/order" className="btn-primary">
+                      Start Your Order
+                    </Link>
+                    <Link href="/menu" className="btn-secondary">
+                      View Menu
+                    </Link>
+                    {mounted && user && (
+                      <Link href="/profile" className="btn-secondary">
+                        My Profile
+                      </Link>
+                    )}
+                  </>
+                )}
+                {/* Only show admin/superadmin links for those roles */}
+                {userRole === 'admin' && (
+                  <Link href="/admin" className="btn-primary">
+                    Go to Admin Dashboard
                   </Link>
+                )}
+                {userRole === 'superadmin' && (
+                  <>
+                    <Link href="/admin" className="btn-primary">
+                      Go to Admin Dashboard
+                    </Link>
+                    <Link href="/superadmin" className="btn-secondary">
+                      Go to Superadmin Panel
+                    </Link>
+                  </>
                 )}
               </div>
             </div>

@@ -233,6 +233,29 @@ export default function ProfilePage() {
     );
   }
 
+  // If there is an error loading the profile, show an error message
+  if (error) {
+    console.error('Profile page error:', error);
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <Navigation />
+        <div className="flex-grow flex items-center justify-center p-4">
+          <div className="text-center max-w-md mx-auto">
+            <h1 className="text-2xl font-bold text-red-700 mb-4">Profile Error</h1>
+            <p className="mb-6 text-red-600">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-amber-800 text-white rounded hover:bg-amber-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   // If no user or profile after loading is complete, show login message
   if (!user || !profile) {
     return (

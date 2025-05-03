@@ -60,21 +60,25 @@ export default function Navigation() {
           <Link href="/" className={`text-amber-900 hover:text-amber-700 ${isActive('/') ? 'font-semibold' : ''}`}>
             Home
           </Link>
-          <Link href="/order" className={`text-amber-900 hover:text-amber-700 ${isActive('/order') ? 'font-semibold' : ''}`}>
-            Order
-          </Link>
-          <Link href="/loyalty" className={`text-amber-900 hover:text-amber-700 ${isActive('/loyalty') ? 'font-semibold' : ''}`}>
-            Loyalty
-          </Link>
-          <Link href="/gift-card" className={`text-amber-900 hover:text-amber-700 ${isActive('/gift-card') ? 'font-semibold' : ''}`}>
-            Gift Cards
-          </Link>
-          <Link href="/bulk-order" className={`text-amber-900 hover:text-amber-700 ${isActive('/bulk-order') ? 'font-semibold' : ''}`}>
-            Bulk Order
-          </Link>
-          
-          {/* Admin links shown conditionally */}
-          {mounted && profile?.role === 'admin' && profile.approved && (
+          {/* Only show member links for normal users */}
+          {(!profile?.role || profile?.role === 'user') && (
+            <>
+              <Link href="/order" className={`text-amber-900 hover:text-amber-700 ${isActive('/order') ? 'font-semibold' : ''}`}>
+                Order
+              </Link>
+              <Link href="/loyalty" className={`text-amber-900 hover:text-amber-700 ${isActive('/loyalty') ? 'font-semibold' : ''}`}>
+                Loyalty
+              </Link>
+              <Link href="/gift-card" className={`text-amber-900 hover:text-amber-700 ${isActive('/gift-card') ? 'font-semibold' : ''}`}>
+                Gift Cards
+              </Link>
+              <Link href="/bulk-order" className={`text-amber-900 hover:text-amber-700 ${isActive('/bulk-order') ? 'font-semibold' : ''}`}>
+                Bulk Order
+              </Link>
+            </>
+          )}
+          {/* Only show admin/superadmin links for those roles */}
+          {profile?.role === 'admin' && profile.approved && (
             <Link 
               href="/admin" 
               className={`text-amber-900 hover:text-amber-700 ${isActive('/admin') ? 'font-semibold' : ''}`}
@@ -82,8 +86,7 @@ export default function Navigation() {
               Admin
             </Link>
           )}
-          
-          {mounted && profile?.role === 'superadmin' && (
+          {profile?.role === 'superadmin' && (
             <>
               <Link 
                 href="/admin" 

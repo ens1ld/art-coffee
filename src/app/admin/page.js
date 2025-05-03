@@ -80,6 +80,7 @@ export default function AdminPage() {
   }
   
   if (error || !user || !profile) {
+    console.error('Admin page error:', error, user, profile);
     return (
       <div className="min-h-screen flex flex-col">
         <Navigation />
