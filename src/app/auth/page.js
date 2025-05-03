@@ -58,6 +58,41 @@ export default function AuthPage() {
     };
     
     checkSession();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        setUserSession(session);
+        // Get user profile to determine role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile) {
+          // Redirect based on role
+          switch (profile.role) {
+            case 'superadmin':
+              router.push('/superadmin');
+              break;
+            case 'admin':
+              router.push('/admin');
+              break;
+            default:
+              router.push(getRedirectPath());
+          }
+        } else {
+          router.push(getRedirectPath());
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUserSession(null);
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, [router]);
 
   const handleSignUp = async (e) => {
@@ -84,6 +119,7 @@ export default function AuthPage() {
           data: {
             name,
           },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
@@ -93,10 +129,6 @@ export default function AuthPage() {
 
       if (data.user) {
         setFormStatus('signup-success');
-        
-        // We don't need to manually create a profile here since we have a database trigger
-        // that automatically creates a profile when a user signs up
-
         setEmail('');
         setPassword('');
         setName('');

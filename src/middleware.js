@@ -23,11 +23,10 @@ const ROLE_REDIRECTS = {
 };
 
 export async function middleware(request) {
-  // Initialize Supabase client
   const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req: request, res });
 
-  // Check if the user is authenticated
+  // Get the session
   const { data: { session } } = await supabase.auth.getSession();
 
   // Define protected routes and their required roles
@@ -40,48 +39,47 @@ export async function middleware(request) {
     '/bulk-order': ['user', 'admin', 'superadmin'],
   };
 
-  // Get the path from the request URL
-  const path = request.nextUrl.pathname;
+  const { pathname } = request.nextUrl;
 
-  // Check if the path is a protected route
-  const isProtectedRoute = Object.keys(protectedRoutes).some(route => 
-    path === route || path.startsWith(`${route}/`)
-  );
-
-  // If it's a protected route and there's no session, redirect to auth page
-  if (isProtectedRoute && !session) {
-    const redirectUrl = new URL('/auth', request.url);
-    redirectUrl.searchParams.set('redirectTo', path);
-    return NextResponse.redirect(redirectUrl);
+  // Allow auth callback route
+  if (pathname === '/auth/callback') {
+    return res;
   }
 
-  // If user is authenticated and trying to access a role-restricted route
-  if (session && isProtectedRoute) {
-    // Get the user's role from the profiles table
+  // Check if the requested path is a protected route
+  const isProtectedRoute = Object.keys(protectedRoutes).some(route => 
+    pathname.startsWith(route)
+  );
+
+  if (isProtectedRoute) {
+    // If user is not authenticated, redirect to auth page
+    if (!session) {
+      const redirectUrl = new URL('/auth', request.url);
+      redirectUrl.searchParams.set('redirectTo', pathname);
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Get user's role from the session
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', session.user.id)
       .single();
 
-    if (!profile) {
-      // Profile not found, redirect to not-authorized
-      return NextResponse.redirect(new URL('/not-authorized', request.url));
-    }
+    const userRole = profile?.role || 'user';
 
-    // Check if the user's role is allowed for this route
-    const requiredRoles = Object.entries(protectedRoutes).find(([route]) => 
-      path === route || path.startsWith(`${route}/`)
-    )?.[1] || [];
+    // Check if user has required role for the route
+    const requiredRoles = protectedRoutes[Object.keys(protectedRoutes).find(route => 
+      pathname.startsWith(route)
+    )];
 
-    if (!requiredRoles.includes(profile.role)) {
-      // User doesn't have the required role, redirect to not-authorized
+    if (!requiredRoles.includes(userRole)) {
       return NextResponse.redirect(new URL('/not-authorized', request.url));
     }
   }
 
-  // If user is authenticated and trying to access auth page, redirect to home
-  if (session && path === '/auth') {
+  // If user is authenticated and tries to access auth page, redirect to home
+  if (pathname === '/auth' && session) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
@@ -96,8 +94,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public files (images, etc.)
+     * - public folder
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$|.*\\.svg$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public).*)',
   ],
 }; 
