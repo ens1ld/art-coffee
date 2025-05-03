@@ -69,9 +69,13 @@ function AuthContent() {
 
   // In case redirect doesn't happen automatically after 5 seconds
   useEffect(() => {
+    // Store the ref in a variable to avoid issues in the cleanup function
+    const timeoutRef = redirectTimeout.current;
+    
+    // Return cleanup function
     return () => {
-      if (redirectTimeout.current) {
-        clearTimeout(redirectTimeout.current);
+      if (timeoutRef) {
+        clearTimeout(timeoutRef);
       }
     };
   }, []);

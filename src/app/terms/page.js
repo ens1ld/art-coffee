@@ -27,10 +27,10 @@ export default function TermsPage() {
           <section className="mb-8">
             <h2 className="heading-3 mb-4">2. Definitions</h2>
             <p>
-              "Company", "We", "Us" or "Our" refers to Art Coffee.
-              "Customer", "You", "Your" refers to the person accessing this website and accepting the Company's terms and conditions.
-              "Products" refers to the items offered for sale on the website.
-              "Service" refers to the services provided by Art Coffee.
+              &ldquo;Company&rdquo;, &ldquo;We&rdquo;, &ldquo;Us&rdquo; or &ldquo;Our&rdquo; refers to Art Coffee.
+              &ldquo;Customer&rdquo;, &ldquo;You&rdquo;, &ldquo;Your&rdquo; refers to the person accessing this website and accepting the Company&apos;s terms and conditions.
+              &ldquo;Products&rdquo; refers to the items offered for sale on the website.
+              &ldquo;Service&rdquo; refers to the services provided by Art Coffee.
             </p>
           </section>
           
