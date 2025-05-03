@@ -17,12 +17,15 @@ export default function Navigation() {
         if (session) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, approved')
             .eq('id', session.user.id)
             .single();
           
           if (profile) {
-            setUserRole(profile.role);
+            // Only set the role as active if the user is approved (or is not an admin)
+            if (profile.role !== 'admin' || profile.approved) {
+              setUserRole(profile.role);
+            }
           }
         }
       } catch (error) {
@@ -36,12 +39,15 @@ export default function Navigation() {
       if (event === 'SIGNED_IN' && session) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, approved')
           .eq('id', session.user.id)
           .single();
         
         if (profile) {
-          setUserRole(profile.role);
+          // Only set the role as active if the user is approved (or is not an admin)
+          if (profile.role !== 'admin' || profile.approved) {
+            setUserRole(profile.role);
+          }
         }
       } else if (event === 'SIGNED_OUT') {
         setUserRole(null);
@@ -69,6 +75,25 @@ export default function Navigation() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
+          <Link 
+            href="/"
+            className={`font-medium transition-colors hover:text-primary ${
+              isActive('/') ? 'text-primary' : 'text-text-secondary'
+            }`}
+          >
+            Home
+          </Link>
+          
+          <Link 
+            href="/about"
+            className={`font-medium transition-colors hover:text-primary ${
+              isActive('/about') ? 'text-primary' : 'text-text-secondary'
+            }`}
+          >
+            About
+          </Link>
+          
+          {/* Customer links - shown to all */}
           <Link 
             href="/order" 
             className={`font-medium transition-colors hover:text-primary ${
@@ -102,6 +127,7 @@ export default function Navigation() {
             Bulk Order
           </Link>
           
+          {/* Admin link - only shown to admins and superadmins */}
           {userRole === 'admin' || userRole === 'superadmin' ? (
             <Link 
               href="/admin" 
@@ -113,6 +139,7 @@ export default function Navigation() {
             </Link>
           ) : null}
           
+          {/* Superadmin link - only shown to superadmins */}
           {userRole === 'superadmin' && (
             <Link 
               href="/superadmin" 
@@ -132,8 +159,8 @@ export default function Navigation() {
               Logout
             </button>
           ) : (
-            <Link href="/login" className="btn-primary">
-              Login
+            <Link href="/auth" className="btn-primary">
+              Login / Sign Up
             </Link>
           )}
         </nav>
@@ -158,6 +185,27 @@ export default function Navigation() {
       {isMenuOpen && (
         <div className="md:hidden bg-white border-t border-border py-4 shadow-lg">
           <div className="container-custom flex flex-col gap-4">
+            <Link 
+              href="/"
+              className={`font-medium transition-colors py-2 hover:text-primary ${
+                isActive('/') ? 'text-primary' : 'text-text-secondary'
+              }`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Home
+            </Link>
+            
+            <Link 
+              href="/about"
+              className={`font-medium transition-colors py-2 hover:text-primary ${
+                isActive('/about') ? 'text-primary' : 'text-text-secondary'
+              }`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              About
+            </Link>
+            
+            {/* Customer links - shown to all */}
             <Link 
               href="/order" 
               className={`font-medium transition-colors py-2 hover:text-primary ${
@@ -195,6 +243,7 @@ export default function Navigation() {
               Bulk Order
             </Link>
             
+            {/* Admin link - only shown to admins and superadmins */}
             {userRole === 'admin' || userRole === 'superadmin' ? (
               <Link 
                 href="/admin" 
@@ -207,6 +256,7 @@ export default function Navigation() {
               </Link>
             ) : null}
             
+            {/* Superadmin link - only shown to superadmins */}
             {userRole === 'superadmin' && (
               <Link 
                 href="/superadmin" 
@@ -231,11 +281,11 @@ export default function Navigation() {
               </button>
             ) : (
               <Link 
-                href="/login" 
+                href="/auth" 
                 className="btn-primary text-center"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Login
+                Login / Sign Up
               </Link>
             )}
           </div>

@@ -11,6 +11,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isAdminSignUp, setIsAdminSignUp] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [formStatus, setFormStatus] = useState('');
@@ -18,10 +19,16 @@ export default function AuthPage() {
   const router = useRouter();
 
   // Get the redirectTo from URL or use default
-  const getRedirectPath = () => {
+  const getRedirectPath = (role = 'user') => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      return params.get('redirectTo') || '/';
+      const redirectPath = params.get('redirectTo');
+      if (redirectPath) return redirectPath;
+      
+      // Default redirects based on role
+      if (role === 'superadmin') return '/superadmin';
+      if (role === 'admin') return '/admin';
+      return '/';
     }
     return '/';
   };
@@ -35,11 +42,17 @@ export default function AuthPage() {
         // Get user profile to determine role
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, approved')
           .eq('id', session.user.id)
           .single();
 
         if (profile) {
+          // For admin users, check if they're approved
+          if (profile.role === 'admin' && !profile.approved) {
+            router.push('/pending-approval');
+            return;
+          }
+          
           // Redirect based on role
           switch (profile.role) {
             case 'superadmin':
@@ -66,11 +79,17 @@ export default function AuthPage() {
         // Get user profile to determine role
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, approved')
           .eq('id', session.user.id)
           .single();
 
         if (profile) {
+          // For admin users, check if they're approved
+          if (profile.role === 'admin' && !profile.approved) {
+            router.push('/pending-approval');
+            return;
+          }
+          
           // Redirect based on role
           switch (profile.role) {
             case 'superadmin':
@@ -80,7 +99,7 @@ export default function AuthPage() {
               router.push('/admin');
               break;
             default:
-              router.push(getRedirectPath());
+              router.push(getRedirectPath(profile.role));
           }
         } else {
           router.push(getRedirectPath());
@@ -118,6 +137,7 @@ export default function AuthPage() {
         options: {
           data: {
             name,
+            role: isAdminSignUp ? 'admin' : 'user',
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
@@ -128,6 +148,14 @@ export default function AuthPage() {
       }
 
       if (data.user) {
+        // If user signs up as admin, set approved to false
+        if (isAdminSignUp) {
+          await supabase
+            .from('profiles')
+            .update({ approved: false })
+            .eq('id', data.user.id);
+        }
+        
         setFormStatus('signup-success');
         setEmail('');
         setPassword('');
@@ -176,9 +204,15 @@ export default function AuthPage() {
         // Get user profile to determine role
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, approved')
           .eq('id', data.user.id)
           .single();
+
+        // For admin users, check if they're approved
+        if (profile && profile.role === 'admin' && !profile.approved) {
+          router.push('/pending-approval');
+          return;
+        }
 
         // Redirect based on role
         if (profile) {
@@ -190,7 +224,7 @@ export default function AuthPage() {
               router.push('/admin');
               break;
             default:
-              router.push(getRedirectPath());
+              router.push(getRedirectPath(profile.role));
           }
         } else {
           router.push(getRedirectPath());
@@ -238,7 +272,7 @@ export default function AuthPage() {
         <div className="w-full max-w-md">
           <div className="card">
             <h1 className="heading-2 text-center mb-6">
-              {isSignUp ? 'Create an Account' : 'Welcome Back'}
+              {!isSignUp ? 'Welcome Back' : isAdminSignUp ? 'Register as Admin' : 'Create an Account'}
             </h1>
             
             {formStatus === 'error' && (
@@ -251,7 +285,9 @@ export default function AuthPage() {
               <div className="mb-6 p-4 bg-success/10 border border-success rounded-lg">
                 <h3 className="font-medium text-lg text-success mb-2">Account Created!</h3>
                 <p className="text-text-secondary">
-                  Please check your email to confirm your account before signing in.
+                  {isAdminSignUp ? 
+                    'Your admin account is pending approval from a superadmin. Please check your email to confirm your account before signing in.' : 
+                    'Please check your email to confirm your account before signing in.'}
                 </p>
               </div>
             )}
@@ -329,22 +365,50 @@ export default function AuthPage() {
                     {formStatus === 'loading' ? 'Processing...' : ''}
                   </>
                 ) : (
-                  isSignUp ? 'Create Account' : 'Sign In'
+                  !isSignUp ? 'Sign In' : isAdminSignUp ? 'Register as Admin' : 'Create Account'
                 )}
               </button>
             </form>
             
             <div className="mt-6 text-center">
-              <button
-                onClick={() => {
-                  setIsSignUp(!isSignUp);
-                  setError('');
-                  setFormStatus('');
-                }}
-                className="text-primary hover:text-primary-dark transition-colors text-sm"
-              >
-                {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-              </button>
+              {!isSignUp ? (
+                <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      setIsSignUp(true);
+                      setIsAdminSignUp(false);
+                      setError('');
+                      setFormStatus('');
+                    }}
+                    className="text-primary hover:text-primary-dark transition-colors text-sm block w-full"
+                  >
+                    Don&apos;t have an account? Sign up as Customer
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsSignUp(true);
+                      setIsAdminSignUp(true);
+                      setError('');
+                      setFormStatus('');
+                    }}
+                    className="text-primary hover:text-primary-dark transition-colors text-sm block w-full"
+                  >
+                    Sign up as Admin (requires approval)
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setIsSignUp(false);
+                    setIsAdminSignUp(false);
+                    setError('');
+                    setFormStatus('');
+                  }}
+                  className="text-primary hover:text-primary-dark transition-colors text-sm"
+                >
+                  Already have an account? Sign in
+                </button>
+              )}
             </div>
           </div>
           

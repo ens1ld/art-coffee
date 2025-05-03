@@ -41,8 +41,8 @@ export async function middleware(request) {
 
   const { pathname } = request.nextUrl;
 
-  // Allow auth callback route
-  if (pathname === '/auth/callback') {
+  // Special cases - allow these routes
+  if (pathname === '/auth/callback' || pathname === '/super') {
     return res;
   }
 
@@ -62,11 +62,17 @@ export async function middleware(request) {
     // Get user's role from the session
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, approved')
       .eq('id', session.user.id)
       .single();
 
     const userRole = profile?.role || 'user';
+    const isApproved = profile?.approved ?? true;
+
+    // For admin routes, check if the admin is approved
+    if (userRole === 'admin' && !isApproved && pathname.startsWith('/admin')) {
+      return NextResponse.redirect(new URL('/pending-approval', request.url));
+    }
 
     // Check if user has required role for the route
     const requiredRoles = protectedRoutes[Object.keys(protectedRoutes).find(route => 
@@ -81,6 +87,20 @@ export async function middleware(request) {
   // If user is authenticated and tries to access auth page, redirect to home
   if (pathname === '/auth' && session) {
     return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  // If user is authenticated and tries to access pending-approval but is not a pending admin
+  if (pathname === '/pending-approval' && session) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, approved')
+      .eq('id', session.user.id)
+      .single();
+    
+    // If not an admin or already approved, redirect
+    if (!profile || profile.role !== 'admin' || profile.approved) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
   }
 
   return res;
