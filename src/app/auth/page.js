@@ -356,7 +356,7 @@ function AuthContent() {
         <main className="flex-grow flex items-center justify-center bg-amber-50">
           <div className="max-w-md w-full mx-auto p-8 bg-white rounded-lg shadow-md">
             <div className="text-center mb-6">
-              <Image src="/public/images/logo.png" alt="Art Coffee Logo" width={80} height={80} className="mx-auto" />
+              <Image src="/images/logo.png" alt="Art Coffee Logo" width={80} height={80} className="mx-auto" />
               <h1 className="text-2xl font-bold text-amber-900 mt-4">You&apos;re signed in!</h1>
             </div>
             <p className="text-center mb-6">Redirecting you to your profile...</p>
@@ -402,7 +402,7 @@ function AuthContent() {
         <div className="max-w-md w-full bg-white rounded-lg shadow-md overflow-hidden">
           <div className="p-6">
             <div className="text-center mb-6">
-              <Image src="/public/images/logo.png" alt="Art Coffee Logo" width={80} height={80} className="mx-auto" />
+              <Image src="/images/logo.png" alt="Art Coffee Logo" width={80} height={80} className="mx-auto" />
               <h1 className="text-2xl font-bold text-amber-900 mt-4">
                 {!isSignUp ? 'Welcome Back' : 
                  isAdminSignUp ? 'Create Admin Account' : 'Create Customer Account'}
