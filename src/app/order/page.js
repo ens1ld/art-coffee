@@ -198,7 +198,7 @@ export default function OrderPage() {
       setOrderStatus('success');
       setCart([]);
     } catch (error) {
-      console.error('Checkout error:', error);
+      console.error("Checkout error:", error);
       setOrderStatus('error');
     }
   };
@@ -240,9 +240,47 @@ export default function OrderPage() {
     <div className="min-h-screen bg-white flex flex-col">
       <Navigation />
 
-      <div className="container-custom py-12">
-        <h1 className="heading-2 mb-8 text-center">Order Your Perfect Coffee</h1>
-        
+      <main className="flex-grow container-custom py-12">
+        <h1 className="heading-2 mb-8 text-center">Order Your Coffee</h1>
+
+        {/* Login Required Message */}
+        {orderStatus === 'login-required' && (
+          <div className="mb-8 p-4 bg-primary/10 border border-primary rounded-lg">
+            <h3 className="font-medium text-lg text-primary mb-2">Authentication Required</h3>
+            <p className="text-text-secondary mb-4">
+              Please log in or create an account to complete your order.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <a href="/login?redirectTo=/order" className="btn-primary">
+                Log In
+              </a>
+              <a href="/signup" className="btn-secondary">
+                Create Account
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Order Success Message */}
+        {orderStatus === 'success' && (
+          <div className="mb-8 p-4 bg-success/10 border border-success rounded-lg">
+            <h3 className="font-medium text-lg text-success mb-2">Order Placed Successfully!</h3>
+            <p className="text-text-secondary">
+              Your order has been placed and will be prepared shortly.
+            </p>
+          </div>
+        )}
+
+        {/* Order Error Message */}
+        {orderStatus === 'error' && (
+          <div className="mb-8 p-4 bg-error/10 border border-error rounded-lg">
+            <h3 className="font-medium text-lg text-error mb-2">Error Processing Order</h3>
+            <p className="text-text-secondary">
+              There was an error processing your order. Please try again.
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Menu Section */}
           <div className="lg:col-span-2">
@@ -565,7 +603,7 @@ export default function OrderPage() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
       <Footer />
     </div>
