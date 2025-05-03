@@ -8,6 +8,9 @@ const PUBLIC_ROUTES = ['/', '/auth', '/login', '/signup', '/about', '/contact', 
 const ADMIN_ROUTES = ['/admin'];
 const SUPERADMIN_ROUTES = ['/superadmin'];
 
+// Define user routes that require authentication but no special role
+const USER_ROUTES = ['/profile', '/order', '/loyalty', '/gift-card', '/bulk-order', '/dashboard'];
+
 // Helper to check if URL starts with any pattern from an array
 const urlStartsWith = (url, patterns) => {
   return patterns.some(pattern => url.pathname.startsWith(pattern));
@@ -59,6 +62,17 @@ export async function middleware(req) {
       const url = new URL('/auth', req.url);
       url.searchParams.set('redirectTo', req.nextUrl.pathname);
       return NextResponse.redirect(url);
+    }
+
+    // User is authenticated, check for user routes
+    if (urlStartsWith(req.nextUrl, USER_ROUTES)) {
+      // We already verified they're authenticated, just let them through
+      // But verify they have a profile - if not, we'll create one in the profile page
+      return NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
     }
 
     // User is authenticated, check role for protected routes
