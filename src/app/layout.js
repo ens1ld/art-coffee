@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ProfileFetcher from "@/components/ProfileFetcher";
+import { LanguageProvider } from "@/lib/LanguageContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,9 +24,11 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ProfileFetcher>
-          {children}
-        </ProfileFetcher>
+        <LanguageProvider>
+          <ProfileFetcher>
+            {children}
+          </ProfileFetcher>
+        </LanguageProvider>
       </body>
     </html>
   );
