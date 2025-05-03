@@ -31,17 +31,33 @@ export default function ProfileFetcher({ children }) {
         .eq('id', userId);
       
       if (!listError && profiles && profiles.length > 0) {
-        console.log('Profile found via list query');
+        console.log('Profile found via list query:', profiles[0]);
         return profiles[0];
       }
       
       if (listError) {
         console.error('Error fetching profile list:', listError);
       } else {
-        console.log('No profile found via list query');
+        console.log('No profile found via list query, will attempt to create');
       }
       
       // If we reach here, no profile was found
+      // Try using single query as a backup
+      const { data: singleProfile, error: singleError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (!singleError && singleProfile) {
+        console.log('Profile found via single query:', singleProfile);
+        return singleProfile;
+      }
+      
+      if (singleError) {
+        console.log('Error in single profile query:', singleError);
+      }
+      
       // Create a new profile as a fallback
       console.log('Creating new profile as fallback');
       
@@ -63,16 +79,34 @@ export default function ProfileFetcher({ children }) {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }])
-        .select('*')
-        .single();
+        .select('*');
       
       if (createError) {
         console.error('Failed to create profile:', createError);
         throw createError;
       }
       
-      console.log('Created new profile successfully:', newProfile);
-      return newProfile;
+      if (newProfile && newProfile.length > 0) {
+        console.log('Created new profile successfully:', newProfile[0]);
+        return newProfile[0];
+      } else {
+        // Try one more time to fetch the profile in case it was created by a trigger
+        console.log('Profile insert returned no data, trying one final fetch');
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Small delay to allow for DB updates
+        
+        const { data: finalProfile, error: finalError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+          
+        if (!finalError && finalProfile) {
+          console.log('Profile found on final attempt:', finalProfile);
+          return finalProfile;
+        }
+        
+        throw new Error('Could not create or retrieve profile');
+      }
     } catch (err) {
       console.error('Profile fetch/create failed:', err);
       throw err;
@@ -85,6 +119,7 @@ export default function ProfileFetcher({ children }) {
       setLoading(true);
       setError(null);
       
+      console.log('Refreshing user session and profile');
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
@@ -140,23 +175,37 @@ export default function ProfileFetcher({ children }) {
           try {
             const profileData = await fetchProfile(session.user.id);
             setProfile(profileData);
+            console.log('Profile set after sign in:', profileData);
             
-            // Redirect based on role
-            if (profileData.role === 'admin' && profileData.approved) {
+            // Get redirect destination from URL if any
+            const url = new URL(window.location.href);
+            const redirectTo = url.searchParams.get('redirectTo');
+            
+            // Redirect based on destination or role
+            if (redirectTo) {
+              console.log('Redirecting to:', redirectTo);
+              router.push(redirectTo);
+            } else if (profileData.role === 'admin' && profileData.approved) {
+              console.log('Redirecting to admin');
               router.push('/admin');
             } else if (profileData.role === 'superadmin') {
+              console.log('Redirecting to superadmin');
               router.push('/superadmin');
             } else {
+              console.log('Redirecting to profile');
               router.push('/profile');
             }
           } catch (error) {
             console.error('Error setting profile after auth change:', error);
+            // Even on error, try to redirect to profile
+            router.push('/profile');
           }
         }
       } else if (event === 'SIGNED_OUT') {
         console.log('User signed out');
         setUser(null);
         setProfile(null);
+        router.push('/');
       }
     });
     

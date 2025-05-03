@@ -293,6 +293,36 @@ export default function DashboardPage() {
         </div>
         
         {renderTabContent()}
+
+        {/* Debug Section - only visible in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h2 className="text-lg font-semibold text-amber-800 mb-4">Debug Information</h2>
+            <div className="bg-gray-100 p-4 rounded-md text-xs font-mono overflow-x-auto">
+              <p>User ID: {user?.id || 'Not found'}</p>
+              <p>Email: {user?.email || 'Not found'}</p>
+              <p>Profile ID: {profile?.id || 'Not found'}</p>
+              <p>Role: {profile?.role || 'Not found'}</p>
+              <p>Approved: {profile?.approved ? 'Yes' : 'No'}</p>
+              <p className="mt-2">Authentication State: {user ? 'Authenticated' : 'Not Authenticated'}</p>
+              <p>Error: {error?.message || 'None'}</p>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => console.log('Profile Context:', { user, profile, loading, error })}
+                className="px-3 py-1 bg-gray-200 text-gray-800 rounded-md text-sm"
+              >
+                Log Data
+              </button>
+              <button
+                onClick={() => window.location.href = '/profile'}
+                className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm"
+              >
+                Go to Profile
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

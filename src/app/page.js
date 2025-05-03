@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 
 export default function HomePage() {
   const [userRole, setUserRole] = useState(null);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -21,6 +22,7 @@ export default function HomePage() {
         
         if (profile) {
           setUserRole(profile.role);
+          setUser(session.user);
         }
       }
     };
@@ -339,6 +341,15 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+
+      {user && (
+        <Link 
+          href="/profile" 
+          className="mt-4 inline-block px-6 py-3 bg-amber-800 text-white rounded-lg shadow hover:bg-amber-700 transition-colors"
+        >
+          View Your Profile
+        </Link>
+      )}
 
       <Footer />
     </div>

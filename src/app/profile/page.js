@@ -48,7 +48,11 @@ export default function ProfilePage() {
     }
   }, [user]);
 
+  // Add debug console logs at the beginning of the component to trace execution
+  console.log('Profile page component rendering');
+
   if (loading) {
+    console.log('Profile page loading state activated');
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto bg-white rounded-lg shadow p-8">
@@ -56,12 +60,16 @@ export default function ProfilePage() {
           <div className="flex justify-center items-center h-40">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-900"></div>
           </div>
+          <div className="text-center text-gray-600 mt-4">
+            Loading your profile information...
+          </div>
         </div>
       </div>
     );
   }
 
   if (error) {
+    console.error('Profile page error state:', error);
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto bg-white rounded-lg shadow p-8">
@@ -70,12 +78,30 @@ export default function ProfilePage() {
             <p>Error loading profile: {error.message || 'Unknown error'}</p>
           </div>
           <p>Please try refreshing the page or sign out and sign back in.</p>
+          <div className="mt-6">
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition-colors mr-4"
+            >
+              Refresh Page
+            </button>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                window.location.href = '/auth';
+              }}
+              className="px-4 py-2 border border-amber-800 text-amber-900 rounded-md hover:bg-amber-100 transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   if (!user) {
+    console.log('Profile page - user not authenticated');
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto bg-white rounded-lg shadow p-8">
