@@ -34,29 +34,31 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Policies for profiles table
+DROP POLICY IF EXISTS "Users can view their own profile" ON profiles;
 CREATE POLICY "Users can view their own profile"
   ON profiles FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
 CREATE POLICY "Users can update their own profile"
   ON profiles FOR UPDATE
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
 CREATE POLICY "Admins can view all profiles"
   ON profiles FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid() AND role IN ('admin', 'superadmin')
+      SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'superadmin')
     )
   );
 
+DROP POLICY IF EXISTS "Superadmins can update all profiles" ON profiles;
 CREATE POLICY "Superadmins can update all profiles"
   ON profiles FOR UPDATE
   USING (
     EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid() AND role = 'superadmin'
+      SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'superadmin'
     )
   );
 
@@ -180,11 +182,4 @@ CREATE POLICY "Admins and superadmins can update products"
     )
   );
 
--- Create admin and superadmin test accounts
--- Insert these directly into the profiles table, you'll need to create the auth users separately
-INSERT INTO profiles (id, email, role)
-VALUES 
-  ('00000000-0000-0000-0000-000000000001', 'admin@artcoffee.com', 'admin'),
-  ('00000000-0000-0000-0000-000000000002', 'superadmin@artcoffee.com', 'superadmin')
-ON CONFLICT (id) DO UPDATE
-SET role = EXCLUDED.role; 
+-- END OF FILE (removing the dangling SQL fragment)   
