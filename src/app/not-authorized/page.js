@@ -35,7 +35,7 @@ export default function NotAuthorizedPage() {
           <h1 className="text-2xl font-bold text-gray-800 mb-4">Access Denied</h1>
           
           <p className="text-gray-600 mb-6">
-            You don't have permission to access this page. 
+            You don&apos;t have permission to access this page. 
             {profile && profile.role && (
               <span> Your current role is <strong>{profile.role}</strong>.</span>
             )}

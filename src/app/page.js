@@ -75,18 +75,6 @@ export default function HomePage() {
               </div>
             </div>
             <div className="relative h-[400px] rounded-card overflow-hidden shadow-card">
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-        <Image
-                src="/images/cards/1.png"
-                alt="Art Coffee Cup"
-                fill
-                className="object-cover"
-          priority
-        />
-=======
-=======
->>>>>>> Stashed changes
                 <Image
                   src="/images/hero-coffee.jpg"
                   alt="Art Coffee Cup"
@@ -94,10 +82,6 @@ export default function HomePage() {
                   className="object-cover"
                   priority
                 />
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             </div>
           </div>
         </div>
@@ -228,16 +212,8 @@ export default function HomePage() {
             
             <div className="card h-full flex flex-col">
               <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-          <Image
-                  src="/images/cards/3.png" 
-=======
-=======
->>>>>>> Stashed changes
                 <Image
                   src="/images/bulk-order.jpg" 
->>>>>>> Stashed changes
                   alt="Bulk Orders"
                   fill
                   className="object-cover"
@@ -252,12 +228,12 @@ export default function HomePage() {
               </Link>
             </div>
             
-            {/* Only render admin/superadmin panels when mounted and appropriate role is present */}
-            {mounted && (userRole === 'admin' || userRole === 'superadmin') && (
+            {/* Admin links - conditionally rendered based on role */}
+            {mounted && userRole === 'admin' && (
               <div className="card h-full flex flex-col">
                 <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
-                  <Image
-                    src="/images/admin.jpg" 
+                  <Image 
+                    src="/images/cards/admin.jpg" 
                     alt="Admin Dashboard"
                     fill
                     className="object-cover"
@@ -265,19 +241,20 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-xl font-serif font-semibold text-primary mb-3">Admin Dashboard</h3>
                 <p className="text-text-secondary mb-6 flex-grow">
-                  Manage orders, inventory, and view analytics. Access exclusive admin features.
+                  Manage orders, view analytics, and handle customer data through our comprehensive admin interface.
                 </p>
                 <Link href="/admin" className="btn-outline w-full text-center">
-                  Go to Dashboard
+                  Access Admin
                 </Link>
               </div>
             )}
             
+            {/* Superadmin links - conditionally rendered based on role */}
             {mounted && userRole === 'superadmin' && (
               <div className="card h-full flex flex-col">
                 <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
-                  <Image
-                    src="/images/superadmin.jpg" 
+                  <Image 
+                    src="/images/cards/superadmin.jpg" 
                     alt="Superadmin Panel"
                     fill
                     className="object-cover"
@@ -285,10 +262,10 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-xl font-serif font-semibold text-primary mb-3">Superadmin Panel</h3>
                 <p className="text-text-secondary mb-6 flex-grow">
-                  Complete system control with user management, system settings, and advanced options.
+                  Full system access to manage users, roles, and application settings.
                 </p>
                 <Link href="/superadmin" className="btn-outline w-full text-center">
-                  Go to Panel
+                  Access Superadmin
                 </Link>
               </div>
             )}

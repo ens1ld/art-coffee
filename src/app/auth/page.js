@@ -249,381 +249,237 @@ function AuthContent() {
         }
       }
       
-      // Determine redirect path
-      let redirectPath = redirectTo;
-      console.log(`Original redirectTo from URL: ${redirectTo}`);
-      
-      // For immediate redirect to non-profile pages
-      if (redirectPath && 
-          redirectPath !== '/profile' && 
-          (redirectPath.includes('/order') || 
-           redirectPath.includes('/gift-card') || 
-           redirectPath.includes('/loyalty'))) {
-        console.log(`Redirecting to content page: ${redirectPath}`);
-        
-        // Use window.location for reliable navigation to content pages
-        if (typeof window !== 'undefined') {
-          window.location.href = redirectPath;
-          return;
-        }
-      }
-      
-      // For profile and admin pages, try to get user role first
+      // If we get here, try to redirect based on user role
       try {
-        const { data: profile, error: profileError } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('*')
+          .select('role, approved')
           .eq('id', signInData.user.id)
           .single();
+          
+        console.log('Profile data after login:', profileData);
         
         if (profileError) {
-          console.error('Profile fetch error:', profileError);
-          // Check for infinite recursion error specifically
-          if (profileError.message && profileError.message.includes('infinite recursion')) {
-            setError('Database policy error detected. Please ask an administrator to run the fix-recursion.sql script.');
-            setLoading(false);
-            return;
-          }
+          console.error('Error fetching profile:', profileError.message);
           throw profileError;
         }
         
-        if (profile) {
-          console.log('Profile data for redirect:', profile);
-          if (profile.role === 'admin' && profile.approved) {
-            redirectPath = '/admin';
-          } else if (profile.role === 'superadmin') {
-            redirectPath = '/superadmin';
-          } else {
-            redirectPath = '/profile';
-          }
+        if (profileData) {
+          console.log('Redirecting based on role:', profileData.role);
+          
+          // Set a timeout to allow for processing
+          redirectTimeout.current = setTimeout(() => {
+            // Use window.location for strongest redirect that overrides potential Next.js conflicts
+            if (profileData.role === 'admin' && profileData.approved) {
+              window.location.href = '/admin';
+            } else if (profileData.role === 'superadmin') {
+              window.location.href = '/superadmin'; 
+            } else {
+              // For regular users or unapproved admins
+              window.location.href = '/profile';
+            }
+          }, 1000);
+        } else {
+          console.log('No profile data found, redirecting to profile page');
+          redirectTimeout.current = setTimeout(() => {
+            window.location.href = '/profile';
+          }, 1000);
         }
       } catch (profileError) {
-        console.error('Error getting profile for redirect:', profileError);
-        // Default to profile page
-        redirectPath = '/profile';
-      }
-      
-      console.log(`Final redirect path: ${redirectPath}`);
-      
-      // Use a simple approach for navigation
-      if (typeof window !== 'undefined') {
-        // Set a small timeout to ensure state updates have time to propagate
-        setTimeout(() => {
-          window.location.href = redirectPath;
-        }, 500);
+        console.error('Error in profile redirect flow:', profileError);
+        // Fallback to default redirect
+        redirectTimeout.current = setTimeout(() => {
+          window.location.href = '/profile';
+        }, 1000);
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login error:', error.message);
       setError(`Login failed: ${error.message}`);
       setLoading(false);
     }
   };
 
+  // Format debug info for display
+  const formatDebugInfo = () => {
+    return JSON.stringify(debugInfo, null, 2);
+  };
+
   // When user is signed in but there might be an error
   if (user && !error && message) {
     return (
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
       <div className="min-h-screen flex flex-col">
         <main className="flex-grow flex items-center justify-center bg-amber-50">
           <div className="max-w-md w-full mx-auto p-8 bg-white rounded-lg shadow-md">
             <div className="text-center mb-6">
-              <Image src="/images/logo.png" alt="Art Coffee Logo" width={80} height={80} className="mx-auto" />
-              <h1 className="text-2xl font-bold text-amber-900 mt-4">You&apos;re signed in!</h1>
+              <div className="bg-green-100 text-green-800 p-4 rounded-md">
+                <h2 className="text-xl font-semibold">You are logged in</h2>
+                <p>{message}</p>
+              </div>
             </div>
-            <p className="text-center mb-6">Redirecting you to your profile...</p>
-            <div className="flex justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-amber-500 border-r-transparent align-[-0.125em]"></div>
+            <div className="mt-6">
+              <Link href={redirectTo} className="w-full block text-center py-2 px-4 bg-amber-800 hover:bg-amber-700 text-white rounded transition-colors">
+                Go to Profile
+              </Link>
             </div>
-            <div className="text-center mt-6">
-              <button 
-                onClick={() => router.push('/profile')}
-                className="px-4 py-2 bg-amber-800 text-white rounded hover:bg-amber-700 transition-colors"
-              >
-                Go to Profile Now
-              </button>
-            </div>
-            
-            {/* Debug button */}
-            <div className="mt-4 text-center">
-              <button 
-                onClick={showDebugInfo}
-                className="text-xs text-gray-500 underline"
-              >
-                Debug Auth
-              </button>
-            </div>
-            
             {debugInfo && (
-              <div className="mt-4 p-3 bg-gray-100 rounded text-xs text-left">
+              <div className="mt-6 p-3 bg-gray-100 rounded text-xs">
+                <p className="font-semibold mb-1">Debug Info:</p>
                 <pre className="whitespace-pre-wrap overflow-auto max-h-40">
                   {JSON.stringify(debugInfo, null, 2)}
                 </pre>
               </div>
             )}
-=======
-=======
->>>>>>> Stashed changes
-      <div className="space-y-6">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-amber-900">You're signed in!</h2>
-          <p className="text-amber-700 mt-2">Redirecting you to your profile...</p>
-        </div>
-        
-        <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-amber-900"></div>
-        </div>
-        
-        <div className="text-center">
-          <button 
-            onClick={() => router.push('/profile')}
-            className="px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition-colors"
-          >
-            Go to Profile Now
-          </button>
-        </div>
-        
-        {/* Debug button */}
-        <div className="mt-4 text-center">
-          <button 
-            onClick={showDebugInfo}
-            className="text-xs text-gray-500 underline"
-          >
-            Debug Auth
-          </button>
-        </div>
-        
-        {debugInfo && (
-          <div className="mt-4 p-3 bg-gray-100 rounded text-xs text-left">
-            <pre className="whitespace-pre-wrap overflow-auto max-h-40">
-              {JSON.stringify(debugInfo, null, 2)}
-            </pre>
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
           </div>
-        )}
+        </main>
       </div>
     );
   }
 
   return (
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     <div className="min-h-screen flex flex-col">
       <main className="flex-grow flex items-center justify-center bg-amber-50 p-4">
         <div className="max-w-md w-full bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="p-6">
-            <div className="text-center mb-6">
-              <Image src="/images/logo.png" alt="Art Coffee Logo" width={80} height={80} className="mx-auto" />
-              <h1 className="text-2xl font-bold text-amber-900 mt-4">
-                {!isSignUp ? 'Welcome Back' : 
-                 isAdminSignUp ? 'Create Admin Account' : 'Create Customer Account'}
+          <div className="p-8">
+            <div className="text-center mb-8">
+              <Image src="/logo.svg" alt="Art Coffee" width={64} height={64} className="mx-auto mb-2" />
+              <h1 className="text-2xl font-semibold text-amber-900">
+                {isSignUp ? 'Create an Account' : 'Welcome Back'}
               </h1>
-              <p className="text-gray-600 mt-2">
-                {!isSignUp ? 'Sign in to your account' : 
-                 isAdminSignUp ? 'Admin accounts require approval' : 'Join Art Coffee today'}
+              <p className="text-gray-600">
+                {isSignUp ? 'Join Art Coffee today' : 'Sign in to your account'}
               </p>
             </div>
-=======
-=======
->>>>>>> Stashed changes
-    <div>
-      <h2 className="text-2xl font-bold text-center text-amber-900 mb-1">
-        {!isSignUp ? 'Welcome Back' : 
-         isAdminSignUp ? 'Create Admin Account' : 'Create Customer Account'}
-      </h2>
-      <p className="text-center text-amber-700 mb-6">
-        {!isSignUp ? 'Sign in to your account' : 
-         isAdminSignUp ? 'Admin accounts require approval' : 'Join Art Coffee today'}
-      </p>
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
-      {message && (
-        <div className="p-4 bg-green-50 border-l-4 border-green-500 text-green-700 mb-4">
-          <p>{message}</p>
-        </div>
-      )}
-      
-      {error && <ErrorBanner message={error} />}
-
-      {loading && (
-        <div className="flex justify-center my-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-amber-500 border-r-transparent"></div>
-        </div>
-      )}
-
-      <form onSubmit={isSignUp ? handleSignUp : handleSignIn} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block text-gray-700 mb-2 font-medium">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-            disabled={loading}
-            placeholder="your.email@example.com"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="password" className="block text-gray-700 mb-2 font-medium">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-            disabled={loading}
-            placeholder={isSignUp ? "Create a secure password" : "Enter your password"}
-          />
-        </div>
-
-        {isSignUp && (
-          <div>
-            <label htmlFor="confirmPassword" className="block text-gray-700 mb-2 font-medium">
-              Confirm Password
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-              disabled={loading}
-              placeholder="Confirm your password"
-            />
-          </div>
-        )}
-
-        {isAdminSignUp && (
-          <div className="p-3 bg-amber-50 rounded-md text-sm text-amber-800">
-            <p><strong>Note:</strong> Admin accounts require approval from a superadmin before accessing admin features.</p>
-          </div>
-        )}
-
-        <button
-          type="submit"
-          className="w-full bg-amber-800 text-white py-3 rounded-md hover:bg-amber-700 transition-colors font-medium"
-          disabled={loading}
-        >
-          {loading ? (
-            <span className="flex items-center justify-center">
-              <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-              {isSignUp ? 'Creating Account...' : 'Signing In...'}
-            </span>
-          ) : (
-            <span>{isSignUp ? 'Sign Up' : 'Sign In'}</span>
-          )}
-        </button>
-      </form>
-
-      <div className="mt-6 text-center">
-        {!isSignUp ? (
-          <div className="space-y-3">
-            <button
-              onClick={() => {
-                setIsSignUp(true);
-                setIsAdminSignUp(false);
-                setError('');
-                setMessage('');
-              }}
-              className="text-amber-800 hover:text-amber-700 font-medium"
-            >
-              Don&apos;t have an account? Sign up as Customer
-            </button>
+            {error && <ErrorBanner message={error} />}
             
-            <button
-              onClick={() => {
-                setIsSignUp(true);
-                setIsAdminSignUp(true);
-                setError('');
-                setMessage('');
-              }}
-              className="block w-full text-amber-800 hover:text-amber-700 font-medium"
-            >
-              Sign up as Admin
-            </button>
+            {message && !error && (
+              <div className="p-4 rounded mb-4 bg-green-50 border-l-4 border-green-500 text-green-700">
+                <p>{message}</p>
+              </div>
+            )}
+
+            <form onSubmit={isSignUp ? handleSignUp : handleSignIn}>
+              <div className="mb-4">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-amber-500 focus:border-amber-500"
+                  required
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-amber-500 focus:border-amber-500"
+                  required
+                />
+              </div>
+              
+              {isSignUp && (
+                <>
+                  <div className="mb-4">
+                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                      Confirm Password
+                    </label>
+                    <input
+                      id="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-amber-500 focus:border-amber-500"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="mb-6">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={isAdminSignUp}
+                        onChange={() => setIsAdminSignUp(!isAdminSignUp)}
+                        className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                      />
+                      <span className="ml-2 text-sm text-gray-600">
+                        Sign up as a manager (requires approval)
+                      </span>
+                    </label>
+                  </div>
+                </>
+              )}
+              
+              <div className="mt-6">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-amber-800 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <span>Loading...</span>
+                  ) : isSignUp ? (
+                    'Create Account'
+                  ) : (
+                    'Sign In'
+                  )}
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-center w-full text-sm text-amber-800 hover:text-amber-700"
+              >
+                {isSignUp
+                  ? 'Already have an account? Sign in'
+                  : 'Need an account? Sign up'}
+              </button>
+            </div>
+            
+            {/* Dev tools */}
+            <div className="mt-8">
+              <button 
+                onClick={showDebugInfo}
+                className="text-xs text-gray-500 hover:text-gray-700 underline"
+                type="button"
+              >
+                Show Debug Info
+              </button>
+              
+              {debugInfo && (
+                <div className="mt-2 p-3 bg-gray-100 rounded text-xs">
+                  <pre className="whitespace-pre-wrap overflow-auto max-h-40">
+                    {formatDebugInfo()}
+                  </pre>
+                </div>
+              )}
+            </div>
           </div>
-        ) : (
-          <button
-            onClick={() => {
-              setIsSignUp(false);
-              setIsAdminSignUp(false);
-              setError('');
-              setMessage('');
-            }}
-            className="text-amber-800 hover:text-amber-700 font-medium"
-          >
-            Already have an account? Sign In
-          </button>
-        )}
-      </div>
-      
-      {/* Debug button */}
-      <div className="mt-4 text-center">
-        <button 
-          onClick={showDebugInfo}
-          className="text-xs text-gray-500 hover:underline"
-        >
-          Debug Auth
-        </button>
-      </div>
-      
-      {debugInfo && (
-        <div className="mt-4 p-3 bg-gray-100 rounded text-xs text-left">
-          <pre className="whitespace-pre-wrap overflow-auto max-h-40">
-            {JSON.stringify(debugInfo, null, 2)}
-          </pre>
         </div>
-      )}
+      </main>
+
+      <Footer />
     </div>
   );
 }
 
-// Main Auth component with Suspense boundary
+// Page component with error handling
 export default function AuthPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-amber-50 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-900"></div></div>}>
-      <div className="min-h-screen bg-amber-50 flex flex-col">
-        <div className="flex-grow flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg">
-            <div className="flex justify-center mb-6">
-              <Link href="/">
-                <Image 
-                  src="/images/logo.png" 
-                  alt="Art Coffee Logo" 
-                  width={100} 
-                  height={100} 
-                  className="cursor-pointer"
-                  priority
-                />
-              </Link>
-            </div>
-            <div className="mb-6 text-center">
-              <h1 className="text-2xl font-bold text-amber-900">Art Coffee</h1>
-              <p className="text-amber-700">Sign in to access your account</p>
-            </div>
-            <AuthContent />
-            <div className="mt-6 text-center text-sm text-gray-500">
-              <p>Having trouble? Contact support at <a href="mailto:support@artcoffee.com" className="text-amber-700 hover:underline">support@artcoffee.com</a></p>
-            </div>
-          </div>
-        </div>
-        <Footer />
-      </div>
+    <Suspense fallback={<div>Loading...</div>}>
+      <AuthContent />
     </Suspense>
   );
 } 
