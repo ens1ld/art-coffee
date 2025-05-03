@@ -203,7 +203,7 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <div className="bg-amber-50 p-4 rounded-md text-gray-600">
-                  You haven't placed any orders yet.
+                  You haven&apos;t placed any orders yet.
                 </div>
               )}
             </div>
@@ -307,7 +307,7 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="bg-white p-8 text-center rounded-md shadow">
-                <p className="text-gray-600 mb-4">You haven't placed any orders yet.</p>
+                <p className="text-gray-600 mb-4">You haven&apos;t placed any orders yet.</p>
                 <Link href="/order" className="inline-block bg-amber-800 text-white px-4 py-2 rounded hover:bg-amber-700">
                   Place Your First Order
                 </Link>
@@ -362,7 +362,7 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="bg-white p-8 text-center rounded-md shadow">
-                <p className="text-gray-600 mb-4">You don't have any favorites yet.</p>
+                <p className="text-gray-600 mb-4">You don&apos;t have any favorites yet.</p>
                 <Link href="/menu" className="inline-block bg-amber-800 text-white px-4 py-2 rounded hover:bg-amber-700">
                   Browse Our Menu
                 </Link>
