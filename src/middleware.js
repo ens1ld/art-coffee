@@ -20,59 +20,62 @@ const ROLE_REDIRECTS = {
 
 export async function middleware(req) {
   const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req, res });
-
-  // Check if the requested path is protected
-  const path = req.nextUrl.pathname;
-  const isProtectedRoute = Object.keys(PROTECTED_ROUTES).some(route => path.startsWith(route));
-
-  if (isProtectedRoute) {
-    // Get the session
-    const { data: { session } } = await supabase.auth.getSession();
-
-    // If no session, redirect to login
-    if (!session) {
-      const redirectUrl = new URL('/auth', req.url);
-      redirectUrl.searchParams.set('redirectTo', path);
-      return NextResponse.redirect(redirectUrl);
-    }
-
-    // Get user's role from profiles table
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .single();
-
-    // If no profile found, redirect to login
-    if (!profile) {
-      const redirectUrl = new URL('/auth', req.url);
-      redirectUrl.searchParams.set('redirectTo', path);
-      return NextResponse.redirect(redirectUrl);
-    }
-
-    // Check if user's role has access to the requested route
-    const requiredRoles = Object.entries(PROTECTED_ROUTES)
-      .find(([route]) => path.startsWith(route))?.[1] || [];
-
-    if (!requiredRoles.includes(profile.role)) {
-      // Instead of showing not-authorized, redirect to their role-specific page
-      return NextResponse.redirect(new URL(ROLE_REDIRECTS[profile.role], req.url));
-    }
+  const pathname = req.nextUrl.pathname;
+  
+  // Public pages that don't require authentication
+  const publicPages = ['/', '/about', '/contact', '/menu', '/login', '/signup'];
+  if (publicPages.includes(pathname)) {
+    return res;
   }
-
+  
+  // Skip middleware for static files and API routes
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.')
+  ) {
+    return res;
+  }
+  
+  // Create supabase middleware client
+  const supabase = createMiddlewareClient({ req, res });
+  
+  // Check if user is authenticated
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  
+  // If user is not authenticated and trying to access protected route
+  if (!session) {
+    // User is not logged in, redirect to login
+    const redirectUrl = new URL('/login', req.url);
+    redirectUrl.searchParams.set('redirectTo', pathname);
+    return NextResponse.redirect(redirectUrl);
+  }
+  
+  // If user is logged in, check role-based access
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', session.user.id)
+    .single();
+  
+  const userRole = profile?.role || 'user';
+  
+  // Admin only routes
+  if (pathname.startsWith('/admin') && userRole !== 'admin' && userRole !== 'superadmin') {
+    return NextResponse.redirect(new URL('/not-authorized', req.url));
+  }
+  
+  // Superadmin only routes
+  if (pathname.startsWith('/superadmin') && userRole !== 'superadmin') {
+    return NextResponse.redirect(new URL('/not-authorized', req.url));
+  }
+  
   return res;
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
-  ],
+  // Match all request paths except for static files, api routes, and _next files
+  matcher: ['/((?!_next|api|.*\\..*).*)'],
 }; 

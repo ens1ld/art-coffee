@@ -1,6 +1,13 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
 :root {
+  /* Font variables */
+  --font-inter: 'Inter', system-ui, sans-serif;
+  --font-playfair: 'Playfair Display', Georgia, serif;
   --background: #1a1a1a;
   --foreground: #f5f5f5;
   --primary: #8B4513;
@@ -12,9 +19,9 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans);
+  background-color: #FFFFFF;
+  color: #333333;
+  font-family: var(--font-inter);
   min-height: 100vh;
 }
 
@@ -24,16 +31,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--background);
+  background: #F9F5F0;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--primary);
-  border-radius: 4px;
+  background: #E8E0D8;
+  border-radius: 8px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-light);
+  background: #D3C5B8;
 }
 
 /* Card hover effects */
@@ -48,9 +55,9 @@ body {
 
 /* Button styles */
 .btn-primary {
-  background: var(--primary);
-  color: var(--foreground);
-  transition: all 0.3s ease;
+  @apply bg-primary text-white py-3 px-6 rounded-button font-medium transition-all 
+  hover:bg-primary-light active:bg-primary-dark focus:outline-none focus:ring-2 
+  focus:ring-primary focus:ring-opacity-50 shadow-sm hover:shadow;
 }
 
 .btn-primary:hover {
@@ -67,4 +74,64 @@ body {
 .input-primary:focus {
   border-color: var(--primary);
   outline: none;
+}
+
+/* Common component styles */
+@layer components {
+  .container-custom {
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .heading-1 {
+    @apply font-serif text-4xl md:text-5xl lg:text-6xl font-bold text-primary-dark;
+  }
+  
+  .heading-2 {
+    @apply font-serif text-3xl md:text-4xl font-bold text-primary;
+  }
+  
+  .heading-3 {
+    @apply font-serif text-2xl md:text-3xl font-semibold text-primary;
+  }
+  
+  .paragraph {
+    @apply text-base md:text-lg text-text-secondary leading-relaxed;
+  }
+  
+  .btn-secondary {
+    @apply bg-background-alt text-primary py-3 px-6 rounded-button font-medium 
+    border border-primary/20 transition-all hover:bg-primary/10 
+    active:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-primary 
+    focus:ring-opacity-30 shadow-sm hover:shadow;
+  }
+  
+  .btn-outline {
+    @apply bg-transparent text-primary py-2.5 px-5 rounded-button font-medium 
+    border border-primary transition-all hover:bg-primary hover:text-white 
+    active:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary 
+    focus:ring-opacity-50;
+  }
+  
+  .card {
+    @apply bg-background-card p-6 rounded-card border border-border shadow-card 
+    hover:shadow-card-hover transition-all duration-300;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 bg-white border border-border rounded-button
+    focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50;
+  }
+  
+  .label {
+    @apply block text-sm font-medium text-text-secondary mb-2;
+  }
+}
+
+/* Navigation and layout */
+.site-header {
+  @apply sticky top-0 z-50 bg-background-DEFAULT border-b border-border py-4;
+}
+
+.page-section {
+  @apply py-12 md:py-20;
 }
