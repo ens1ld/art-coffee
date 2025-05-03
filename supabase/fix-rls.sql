@@ -7,6 +7,8 @@ DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
 DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
 DROP POLICY IF EXISTS "Superadmins can update all profiles" ON profiles;
 DROP POLICY IF EXISTS "Allow inserting profiles" ON profiles;
+DROP POLICY IF EXISTS "Service role can insert profiles" ON profiles;
+DROP POLICY IF EXISTS "Service role can delete profiles" ON profiles;
 
 -- DISABLE RLS temporarily to make sure all operations work
 ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;

@@ -13,29 +13,77 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      if (sessionError || !session || !session.user) {
-        setError('No active session.');
+        if (sessionError || !session || !session.user) {
+          setError('No active session. Please sign in.');
+          setLoading(false);
+          return;
+        }
+
+        console.log('Fetching profile for user:', session.user.email);
+        
+        // Try the list query first (more reliable)
+        const { data: profiles, error: listError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id);
+          
+        if (!listError && profiles && profiles.length > 0) {
+          console.log('Profile found via list query');
+          setProfile(profiles[0]);
+          setLoading(false);
+          return;
+        }
+        
+        // Try single query as fallback
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching profile:', error);
+          
+          // Last resort - try to create profile
+          try {
+            console.log('Attempting to create profile');
+            const { data: newProfile, error: createError } = await supabase
+              .from('profiles')
+              .insert({
+                id: session.user.id,
+                email: session.user.email,
+                role: session.user.user_metadata?.role || 'user',
+                approved: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .select()
+              .single();
+              
+            if (createError) {
+              setError('Could not retrieve profile. Please try again.');
+            } else {
+              setProfile(newProfile);
+            }
+          } catch (e) {
+            setError('Could not retrieve profile.');
+          }
+        } else {
+          setProfile(data);
+        }
+        
         setLoading(false);
-        return;
+      } catch (err) {
+        console.error('Unexpected error:', err);
+        setError('An error occurred. Please try again.');
+        setLoading(false);
       }
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (error) {
-        setError('Could not retrieve profile.');
-      } else {
-        setProfile(data);
-      }
-      setLoading(false);
     };
 
     fetchProfile();
