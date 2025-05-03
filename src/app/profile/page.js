@@ -1,217 +1,169 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Navigation from '@/components/Navigation';
-import Footer from '@/components/Footer';
+
+import { useState, useEffect } from 'react';
+import { useProfile } from '@/components/ProfileFetcher';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function ProfilePage() {
-  const router = useRouter();
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-        if (sessionError || !session || !session.user) {
-          setError('No active session. Please sign in.');
-          setLoading(false);
-          return;
-        }
-
-        console.log('Fetching profile for user:', session.user.email);
-        
-        // Try the list query first (more reliable)
-        const { data: profiles, error: listError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id);
-          
-        if (!listError && profiles && profiles.length > 0) {
-          console.log('Profile found via list query');
-          setProfile(profiles[0]);
-          setLoading(false);
-          return;
-        }
-        
-        // Try single query as fallback
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (error) {
-          console.error('Error fetching profile:', error);
-          
-          // Last resort - try to create profile
-          try {
-            console.log('Attempting to create profile');
-            const { data: newProfile, error: createError } = await supabase
-              .from('profiles')
-              .insert({
-                id: session.user.id,
-                email: session.user.email,
-                role: session.user.user_metadata?.role || 'user',
-                approved: true,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
-              .select()
-              .single();
-              
-            if (createError) {
-              setError('Could not retrieve profile. Please try again.');
-            } else {
-              setProfile(newProfile);
-            }
-          } catch (e) {
-            setError('Could not retrieve profile.');
-          }
-        } else {
-          setProfile(data);
-        }
-        
-        setLoading(false);
-      } catch (err) {
-        console.error('Unexpected error:', err);
-        setError('An error occurred. Please try again.');
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [router]);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
-  };
+  const { user, profile, loading, error } = useProfile();
+  const [updateStatus, setUpdateStatus] = useState({ message: '', type: '' });
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Navigation />
-        <main className="flex-grow flex items-center justify-center">
-          <div className="text-center p-8">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-            <p className="mt-4 text-lg">Loading profile...</p>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-8">
+          <h1 className="text-2xl font-bold text-amber-900 mb-6">Your Profile</h1>
+          <div className="flex justify-center items-center h-40">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-900"></div>
           </div>
-        </main>
-        <Footer />
+        </div>
       </div>
     );
   }
 
-  if (error || !profile) {
+  if (error) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Navigation />
-        <main className="flex-grow flex items-center justify-center">
-          <div className="text-center p-8 max-w-md mx-auto">
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              <p>{error || 'No profile data found.'}</p>
-            </div>
-            <button
-              onClick={() => router.push('/auth')}
-              className="px-4 py-2 bg-amber-800 text-white rounded hover:bg-amber-700 mr-2"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => router.refresh()}
-              className="px-4 py-2 border border-amber-800 text-amber-800 rounded hover:bg-amber-50"
-            >
-              Try Again
-            </button>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-8">
+          <h1 className="text-2xl font-bold text-amber-900 mb-6">Your Profile</h1>
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
+            <p>Error loading profile: {error.message || 'Unknown error'}</p>
           </div>
-        </main>
-        <Footer />
+          <p>Please try refreshing the page or sign out and sign back in.</p>
+        </div>
       </div>
     );
   }
+
+  if (!user) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-8">
+          <h1 className="text-2xl font-bold text-amber-900 mb-6">Your Profile</h1>
+          <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-700 p-4 mb-6">
+            <p>You need to be logged in to view your profile.</p>
+          </div>
+          <a href="/auth" className="inline-block bg-amber-800 text-white px-4 py-2 rounded hover:bg-amber-700">
+            Login / Sign Up
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  const getUserRoleDisplay = () => {
+    if (!profile) return 'Loading...';
+    
+    switch (profile.role) {
+      case 'user':
+        return 'Customer';
+      case 'admin':
+        return profile.approved ? 'Administrator (Approved)' : 'Administrator (Pending Approval)';
+      case 'superadmin':
+        return 'Super Administrator';
+      default:
+        return 'Unknown';
+    }
+  };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navigation />
-      <main className="flex-grow p-6 max-w-4xl mx-auto w-full">
-        <div className="bg-amber-50 rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-2xl font-bold text-amber-900 mb-6">Your Profile</h1>
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-8">
+        <h1 className="text-2xl font-bold text-amber-900 mb-6">Your Profile</h1>
+        
+        {updateStatus.message && (
+          <div className={`border-l-4 p-4 mb-6 ${
+            updateStatus.type === 'success' 
+              ? 'bg-green-100 border-green-500 text-green-700' 
+              : 'bg-red-100 border-red-500 text-red-700'
+          }`}>
+            <p>{updateStatus.message}</p>
+          </div>
+        )}
 
-          <div className="mb-6">
+        <div className="space-y-6">
+          <div>
             <h2 className="text-lg font-semibold text-amber-800 mb-2">Account Information</h2>
-            <div className="bg-white rounded p-4 shadow-sm">
-              <div className="mb-4">
-                <p className="text-sm text-gray-500">Email</p>
-                <p className="font-medium">{profile.email}</p>
-              </div>
-              <div className="mb-4">
-                <p className="text-sm text-gray-500">User Role</p>
-                <p className="font-medium capitalize">{profile.role}</p>
-              </div>
-              <div className="mb-4">
-                <p className="text-sm text-gray-500">Account Status</p>
-                <p className="font-medium">
-                  {profile.role === 'admin' && !profile.approved ? (
-                    <span className="text-orange-500">Pending Approval</span>
-                  ) : (
-                    <span className="text-green-500">Active</span>
-                  )}
-                </p>
+            <div className="bg-amber-50 p-4 rounded-md">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-gray-600 text-sm">Email</p>
+                  <p className="font-medium">{user.email}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 text-sm">User ID</p>
+                  <p className="font-medium text-sm overflow-ellipsis overflow-hidden">{user.id}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 text-sm">Account Type</p>
+                  <p className="font-medium">{getUserRoleDisplay()}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 text-sm">Email Verified</p>
+                  <p className="font-medium">{user.email_confirmed_at ? 'Yes' : 'No'}</p>
+                </div>
               </div>
             </div>
           </div>
 
-          {(profile.role === 'admin' || profile.role === 'superadmin') && profile.approved && (
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-amber-800 mb-2">Admin Access</h2>
-              <div className="bg-white rounded p-4 shadow-sm">
-                <p className="mb-3">You have administrative privileges.</p>
-                <div className="flex flex-wrap gap-2">
-                  {profile.role === 'admin' && (
-                    <button
-                      onClick={() => router.push('/admin')}
-                      className="px-4 py-2 bg-amber-700 text-white rounded hover:bg-amber-600"
-                    >
-                      Admin Dashboard
-                    </button>
-                  )}
-                  {profile.role === 'superadmin' && (
-                    <button
-                      onClick={() => router.push('/superadmin')}
-                      className="px-4 py-2 bg-amber-900 text-white rounded hover:bg-amber-800"
-                    >
-                      Superadmin Panel
-                    </button>
-                  )}
+          {profile && (
+            <div>
+              <h2 className="text-lg font-semibold text-amber-800 mb-2">Profile Settings</h2>
+              <div className="bg-amber-50 p-4 rounded-md">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-gray-600 text-sm">Created At</p>
+                    <p className="font-medium">
+                      {new Date(profile.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600 text-sm">Last Updated</p>
+                    <p className="font-medium">
+                      {new Date(profile.updated_at).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="flex justify-between items-center mt-8">
-            <button
-              onClick={() => router.push('/')}
-              className="px-4 py-2 border border-amber-800 text-amber-800 rounded hover:bg-amber-50"
-            >
-              Back to Home
-            </button>
-            <button
-              onClick={handleSignOut}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              Sign Out
-            </button>
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h2 className="text-lg font-semibold text-amber-800 mb-4">Account Actions</h2>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  window.location.href = '/';
+                }}
+                className="px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition-colors"
+              >
+                Sign Out
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const { error } = await supabase.auth.resetPasswordForEmail(user.email);
+                    if (error) throw error;
+                    setUpdateStatus({
+                      message: 'Password reset email sent to your email address',
+                      type: 'success',
+                    });
+                  } catch (error) {
+                    setUpdateStatus({
+                      message: `Error sending reset email: ${error.message}`,
+                      type: 'error',
+                    });
+                  }
+                }}
+                className="px-4 py-2 border border-amber-800 text-amber-900 rounded-md hover:bg-amber-100 transition-colors"
+              >
+                Reset Password
+              </button>
+            </div>
           </div>
         </div>
-      </main>
-      <Footer />
+      </div>
     </div>
   );
 }
