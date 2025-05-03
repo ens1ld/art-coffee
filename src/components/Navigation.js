@@ -156,7 +156,7 @@ export default function Navigation() {
 
       {/* Mobile Navigation */}
       {isMenuOpen && (
-        <div className="md:hidden bg-background-DEFAULT border-t border-border py-4 shadow-lg">
+        <div className="md:hidden bg-white border-t border-border py-4 shadow-lg">
           <div className="container-custom flex flex-col gap-4">
             <Link 
               href="/order" 

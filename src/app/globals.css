@@ -99,7 +99,7 @@ body {
   }
   
   .btn-secondary {
-    @apply bg-background-alt text-primary py-3 px-6 rounded-button font-medium 
+    @apply bg-[#F9F5F0] text-primary py-3 px-6 rounded-button font-medium 
     border border-primary/20 transition-all hover:bg-primary/10 
     active:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-primary 
     focus:ring-opacity-30 shadow-sm hover:shadow;
@@ -113,7 +113,7 @@ body {
   }
   
   .card {
-    @apply bg-background-card p-6 rounded-card border border-border shadow-card 
+    @apply bg-[#FFF9F0] p-6 rounded-card border border-border shadow-card 
     hover:shadow-card-hover transition-all duration-300;
   }
   
@@ -129,7 +129,7 @@ body {
 
 /* Navigation and layout */
 .site-header {
-  @apply sticky top-0 z-50 bg-background-DEFAULT border-b border-border py-4;
+  @apply sticky top-0 z-50 bg-white border-b border-border py-4;
 }
 
 .page-section {

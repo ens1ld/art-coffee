@@ -29,11 +29,11 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background-DEFAULT flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       <Navigation />
 
       {/* Hero Section */}
-      <section className="relative bg-background-alt pt-16 pb-24">
+      <section className="relative bg-[#F9F5F0] pt-16 pb-24">
         <div className="container-custom relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
             <div>
@@ -53,13 +53,13 @@ export default function HomePage() {
               </div>
             </div>
             <div className="relative h-[400px] rounded-card overflow-hidden shadow-card">
-              <Image
+        <Image
                 src="/images/hero-coffee.jpg"
                 alt="Art Coffee Cup"
                 fill
                 className="object-cover"
-                priority
-              />
+          priority
+        />
             </div>
           </div>
         </div>
@@ -122,7 +122,7 @@ export default function HomePage() {
       </section>
 
       {/* Main Services Section */}
-      <section className="py-20 bg-background-alt">
+      <section className="py-20 bg-[#F9F5F0]">
         <div className="container-custom">
           <div className="text-center mb-16">
             <h2 className="heading-2 mb-4">
@@ -190,7 +190,7 @@ export default function HomePage() {
             
             <div className="card h-full flex flex-col">
               <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
-                <Image 
+          <Image
                   src="/images/bulk-order.jpg" 
                   alt="Bulk Orders"
                   fill
@@ -209,7 +209,7 @@ export default function HomePage() {
             {userRole === 'admin' || userRole === 'superadmin' ? (
               <div className="card h-full flex flex-col">
                 <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
-                  <Image 
+          <Image
                     src="/images/admin.jpg" 
                     alt="Admin Dashboard"
                     fill
@@ -229,7 +229,7 @@ export default function HomePage() {
             {userRole === 'superadmin' && (
               <div className="card h-full flex flex-col">
                 <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
-                  <Image 
+          <Image
                     src="/images/superadmin.jpg" 
                     alt="Superadmin Panel"
                     fill
@@ -257,7 +257,7 @@ export default function HomePage() {
               What Our Customers Say
             </h2>
             <p className="paragraph max-w-3xl mx-auto">
-              Don't just take our word for it. Hear from our happy customers.
+              Don&apos;t just take our word for it. Hear from our happy customers.
             </p>
           </div>
           
@@ -271,7 +271,7 @@ export default function HomePage() {
                 ))}
               </div>
               <p className="text-text-secondary italic mb-6">
-                "Art Coffee has become my daily ritual. The quality is unmatched, and the customization options let me experiment with new flavors."
+                &quot;Art Coffee has become my daily ritual. The quality is unmatched, and the customization options let me experiment with new flavors.&quot;
               </p>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-primary/20"></div>
@@ -291,7 +291,7 @@ export default function HomePage() {
                 ))}
               </div>
               <p className="text-text-secondary italic mb-6">
-                "The loyalty program is fantastic! I've earned free coffees and exclusive offers. Plus, the mobile ordering makes my morning commute so much easier."
+                &quot;The loyalty program is fantastic! I&apos;ve earned free coffees and exclusive offers. Plus, the mobile ordering makes my morning commute so much easier.&quot;
               </p>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-primary/20"></div>
@@ -311,7 +311,7 @@ export default function HomePage() {
                 ))}
               </div>
               <p className="text-text-secondary italic mb-6">
-                "I ordered gift cards for my team, and everyone was thrilled. The personalization options made each card special, and the coffee quality exceeded expectations."
+                &quot;I ordered gift cards for my team, and everyone was thrilled. The personalization options made each card special, and the coffee quality exceeded expectations.&quot;
               </p>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-primary/20"></div>

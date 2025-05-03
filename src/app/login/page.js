@@ -1,6 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import Navigation from '@/components/Navigation';
@@ -8,9 +8,6 @@ import Footer from '@/components/Footer';
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/';
-  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,10 +39,8 @@ export default function LoginPage() {
 
       setFormStatus('success');
       
-      // Redirect based on role or the redirectTo param
-      if (redirectTo !== '/') {
-        router.push(redirectTo);
-      } else if (profile) {
+      // Redirect based on role
+      if (profile) {
         switch (profile.role) {
           case 'superadmin':
             router.push('/superadmin');
@@ -69,7 +64,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background-DEFAULT flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       <Navigation />
 
       <div className="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
