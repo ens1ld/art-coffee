@@ -174,6 +174,7 @@ function AuthContent() {
     setError('');
     setMessage('');
     setLoading(true);
+    setDebugInfo(null); // Clear previous debug info
 
     try {
       console.log('Starting sign in process...');
@@ -190,70 +191,136 @@ function AuthContent() {
       
       if (authError) throw authError;
       if (!signInData?.user) throw new Error('No user returned from Supabase');
-
-      // Fetch profile using session user id
-      console.log('Fetching profile for user:', signInData.user.id);
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', signInData.user.id)
-        .single();
-        
-      console.log('Profile fetch result:', { 
-        found: !!profile, 
-        error: profileError?.message || null 
+      
+      // Get raw session for diagnostics
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log('Current session after sign in:', {
+        exists: !!sessionData?.session,
+        userId: sessionData?.session?.user?.id
       });
+
+      // Fetch profile using multiple methods for resilience
+      let profile = null;
+      let fetchError = null;
+      
+      // Method 1: Try list query first (more reliable than .single())
+      try {
+        console.log('Method 1: Fetching profile via list query');
+        const { data: profiles, error: listError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', signInData.user.id);
+          
+        console.log('List query result:', {
+          success: !listError,
+          count: profiles?.length || 0
+        });
         
-      if (profileError) {
-        console.error('Profile fetch error:', profileError);
+        if (!listError && profiles && profiles.length > 0) {
+          profile = profiles[0];
+          console.log('Profile found via list query:', profile.id);
+        } else if (listError) {
+          console.error('List query error:', listError);
+        } else {
+          console.log('No profiles found with list query');
+        }
+      } catch (err) {
+        console.error('Error in method 1:', err);
+      }
+      
+      // Method 2: Try single query if list query failed
+      if (!profile) {
+        try {
+          console.log('Method 2: Fetching profile via single query');
+          const { data: singleProfile, error: singleError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', signInData.user.id)
+            .single();
+            
+          if (!singleError && singleProfile) {
+            profile = singleProfile;
+            console.log('Profile found via single query:', profile.id);
+          } else if (singleError) {
+            console.error('Single query error:', singleError);
+            fetchError = singleError;
+          }
+        } catch (err) {
+          console.error('Error in method 2:', err);
+          fetchError = err;
+        }
+      }
+      
+      // Method 3: Create profile if not found
+      if (!profile) {
+        try {
+          console.log('Method 3: Creating missing profile');
+          const role = signInData.user.user_metadata?.role || 'user';
+          
+          // First check if profile exists again (race condition check)
+          const { data: doubleCheckProfiles } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', signInData.user.id);
+            
+          if (doubleCheckProfiles && doubleCheckProfiles.length > 0) {
+            profile = doubleCheckProfiles[0];
+            console.log('Profile found on double-check:', profile.id);
+          } else {
+            // Create new profile
+            const { data: newProfile, error: insertError } = await supabase
+              .from('profiles')
+              .insert([{ 
+                id: signInData.user.id, 
+                email: signInData.user.email,
+                role: role,
+                approved: role === 'admin' ? false : true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }])
+              .select()
+              .single();
+              
+            if (insertError) {
+              console.error('Profile creation error:', insertError);
+              fetchError = insertError;
+            } else if (newProfile) {
+              profile = newProfile;
+              console.log('New profile created:', profile.id);
+            }
+          }
+        } catch (err) {
+          console.error('Error in method 3:', err);
+          fetchError = err;
+        }
+      }
+      
+      // Handle final result
+      if (!profile) {
+        // Collect debugging information
+        const debugData = {
+          userId: signInData.user.id,
+          userEmail: signInData.user.email,
+          authStatus: 'success',
+          profileStatus: 'failed',
+          error: fetchError ? {
+            message: fetchError.message,
+            code: fetchError.code,
+            details: fetchError.details,
+            hint: fetchError.hint
+          } : 'Unknown profile fetch error',
+          timestamp: new Date().toISOString()
+        };
+        
+        console.error('All profile fetch methods failed:', debugData);
+        setDebugInfo(debugData);
         throw new Error('Failed to retrieve user profile. Please try again.');
       }
       
-      if (!profile) {
-        console.error('No profile found for user ID:', signInData.user.id);
-        
-        // Try to create profile (fallback if trigger didn't work)
-        try {
-          console.log('Attempting to create missing profile...');
-          const role = signInData.user.user_metadata?.role || 'user';
-          
-          const { data: newProfile, error: insertError } = await supabase
-            .from('profiles')
-            .insert([{ 
-              id: signInData.user.id, 
-              email: signInData.user.email,
-              role: role,
-              approved: role === 'admin' ? false : true
-            }])
-            .select()
-            .single();
-            
-          if (insertError) {
-            console.error('Failed to create profile:', insertError);
-            throw new Error('Failed to create user profile');
-          }
-          
-          console.log('Created new profile:', newProfile);
-          
-          // Use this profile for redirection
-          if (newProfile) {
-            // Redirect based on newly created profile
-            if (newProfile.role === 'admin' && newProfile.approved) {
-              window.location.href = '/admin';
-            } else if (newProfile.role === 'superadmin') {
-              window.location.href = '/superadmin';
-            } else {
-              window.location.href = '/profile';
-            }
-            return;
-          }
-        } catch (e) {
-          console.error('Error creating profile:', e);
-          throw new Error('Failed to set up user profile');
-        }
-      }
-
-      // Redirect by role if profile exists
+      // Success path
+      console.log('Sign-in completed, profile retrieved:', profile.role);
+      
+      // Redirect by role
       if (profile.role === 'admin' && profile.approved) {
         window.location.href = '/admin';
       } else if (profile.role === 'superadmin') {
@@ -265,13 +332,15 @@ function AuthContent() {
       console.error('Sign in error:', error);
       setError(error.message || 'Failed to sign in');
       
-      // Add debug info
-      setDebugInfo({
-        errorType: error.name,
-        errorMessage: error.message,
-        errorStack: error.stack,
-        timestamp: new Date().toISOString()
-      });
+      // Add debug info if not already set
+      if (!debugInfo) {
+        setDebugInfo({
+          errorType: error.name,
+          errorMessage: error.message,
+          errorStack: error.stack,
+          timestamp: new Date().toISOString()
+        });
+      }
     } finally {
       setLoading(false);
     }
