@@ -20,16 +20,30 @@ export default function ProfilePage() {
   const [loadingData, setLoadingData] = useState(true);
 
   // Get user profile from context
-  const { user, profile, loading } = useProfile();
+  const { user, profile, loading, error } = useProfile();
 
   // Client-side only code
   useEffect(() => {
     setMounted(true);
+    console.log("Profile page mounted, client-side rendering active");
   }, []);
+
+  // Add more detailed logging for debugging
+  useEffect(() => {
+    if (mounted) {
+      console.log("Auth state in profile page:", {
+        loading,
+        user: user ? `User ${user.id} (${user.email})` : 'No user',
+        profile: profile ? `Profile with role ${profile.role}` : 'No profile',
+        error: error || 'No error'
+      });
+    }
+  }, [mounted, user, profile, loading, error]);
 
   // Only redirect to login when we're sure there's no user
   useEffect(() => {
     if (mounted && !loading && !user) {
+      console.log("No authenticated user found, redirecting to login");
       router.push('/login');
     }
   }, [mounted, loading, user, router]);
