@@ -54,6 +54,31 @@ export default function ProfileFetcher({ children }) {
   const fetchProfile = useCallback(async (userId) => {
     try {
       console.log('Fetching profile for user:', userId);
+      
+      // Try list query first (more reliable than single)
+      try {
+        console.log('Attempting list query first...');
+        const { data: profiles, error: listError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId);
+          
+        console.log('List query result:', { 
+          success: !listError, 
+          count: profiles?.length || 0,
+          error: listError ? listError.message : null
+        });
+          
+        if (!listError && profiles && profiles.length > 0) {
+          console.log('Profile found via list query:', profiles[0]);
+          return profiles[0];
+        }
+      } catch (listErr) {
+        console.error('List query failed:', listErr);
+      }
+      
+      // Fall back to single query
+      console.log('Falling back to single query...');
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -61,21 +86,11 @@ export default function ProfileFetcher({ children }) {
         .single();
       
       if (profileError) {
+        console.error('Single query error:', profileError.message, profileError.code);
+        
         // If no profile found, try to create one
         if (profileError.code === 'PGRST116') {
           console.log('Profile not found in fetchProfile, attempting to create one');
-          
-          // Retry profile fetch first, as it may have been created by a trigger
-          const { data: retryProfile, error: retryError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
-            
-          if (!retryError && retryProfile) {
-            console.log('Profile found on retry:', retryProfile);
-            return retryProfile;
-          }
           
           // Get the user email first
           const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -85,53 +100,49 @@ export default function ProfileFetcher({ children }) {
           }
           
           if (userData && userData.user) {
-            // Check if a profile might already exist (to prevent race conditions)
-            const { data: existingProfiles, error: checkError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', userId);
-              
-            if (!checkError && existingProfiles?.length > 0) {
-              console.log('Profile found through list query:', existingProfiles[0]);
-              return existingProfiles[0];
-            }
+            console.log('Creating profile with data:', {
+              id: userId,
+              email: userData.user.email,
+              role: userData.user.user_metadata?.role || 'user'
+            });
             
-            try {
-              // Create new profile
-              return await createProfile(userId, userData.user.email);
-            } catch (createError) {
-              // If creation fails, try one more time to get the profile
-              // It might have been created by a trigger
-              console.log('Profile creation failed, checking if it exists now');
-              const { data: finalCheck, error: finalError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', userId)
-                .single();
-                
-              if (!finalError && finalCheck) {
-                console.log('Profile found on final check:', finalCheck);
-                return finalCheck;
-              }
+            // Create new profile
+            const { data: newProfile, error: createError } = await supabase
+              .from('profiles')
+              .insert({
+                id: userId,
+                email: userData.user.email,
+                role: userData.user.user_metadata?.role || 'user',
+                approved: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .select('*')
+              .single();
               
-              // Truly failed
+            if (createError) {
+              console.error('Error creating profile:', createError.message, createError.code);
               throw createError;
             }
+            
+            console.log('Profile created successfully:', newProfile);
+            return newProfile;
           } else {
             throw new Error('Cannot create profile: User data is missing');
           }
         }
+        
         console.error('Error fetching profile:', profileError);
         throw profileError;
       }
       
-      console.log('Profile fetched successfully:', profile);
+      console.log('Profile fetched successfully via single query:', profile);
       return profile;
     } catch (err) {
-      console.error('Error in fetchProfile:', err);
+      console.error('Error in fetchProfile:', err.message);
       throw err;
     }
-  }, [createProfile]);
+  }, []);
 
   // Function to refresh user and profile data
   const refreshUserAndProfile = useCallback(async () => {
