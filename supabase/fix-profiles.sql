@@ -141,6 +141,6 @@ FROM profiles;
 -- Create a superadmin if you need one (replace with your email)
 UPDATE profiles
 SET role = 'superadmin', approved = TRUE
-WHERE email = 'ergi.prifti14@gmail.com';
+WHERE email = 'superadm.artcoffee@gmail.com';
 
 SELECT 'Profile issues fixed!' as result; 

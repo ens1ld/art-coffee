@@ -93,6 +93,6 @@ WHERE p.id IS NULL;
 -- Create a superadmin user if needed
 UPDATE profiles
 SET role = 'superadmin', approved = TRUE
-WHERE email = 'ergi.prifti14@gmail.com';
+WHERE email = 'superadm.artcoffee@gmail.com';
 
 SELECT 'RLS policies fixed!' as result; 

@@ -1,6 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import ProfileFetcher from "@/components/ProfileFetcher";
+import ClientProfileProvider from "@/components/ClientProfileProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,13 +19,14 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
       >
-        <ProfileFetcher>
+        <ClientProfileProvider>
           {children}
-        </ProfileFetcher>
+        </ClientProfileProvider>
       </body>
     </html>
   );

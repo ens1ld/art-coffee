@@ -123,7 +123,7 @@ CREATE POLICY "Users can create profiles"
 -- Ensure the current user (your email) has superadmin access
 UPDATE profiles
 SET role = 'superadmin', approved = TRUE
-WHERE email ILIKE '%ergi.prifti14@gmail.com%';
+WHERE email ILIKE '%superadm.artcoffee@gmail.com%';
 
 -- ================ PART 8: VERIFY SETUP ================
 -- Display status

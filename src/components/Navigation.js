@@ -8,16 +8,41 @@ import { useProfile } from '@/components/ProfileFetcher';
 
 export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { profile, user, loading } = useProfile();
+  const [mounted, setMounted] = useState(false);
+  
+  // Use profile context safely - it might be null during initial render
+  const profileContext = useProfile?.() || {}; // Add fallback for undefined useProfile
+  const profile = profileContext?.profile;
+  const user = profileContext?.user;
+  const loading = profileContext?.loading || false;
+  
   const pathname = usePathname();
+  
+  // Set mounted to true after component mounts
+  useEffect(() => {
+    setMounted(true);
+    console.log('Navigation component mounted, auth state:', !!user);
+  }, [user]);
   
   // Helper function to check if a path is active
   const isActive = (path) => {
-    return pathname === path || pathname.startsWith(`${path}/`);
+    return pathname === path || pathname?.startsWith(`${path}/`);
   };
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  // Handle sign out in a consistent way
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    } catch (err) {
+      console.error('Error signing out:', err);
+    }
   };
 
   return (
@@ -30,7 +55,7 @@ export default function Navigation() {
           </Link>
         </div>
 
-        {/* Desktop Navigation */}
+        {/* Desktop Navigation - always visible for all users */}
         <nav className="hidden md:flex space-x-6">
           <Link href="/" className={`text-amber-900 hover:text-amber-700 ${isActive('/') ? 'font-semibold' : ''}`}>
             Home
@@ -48,7 +73,8 @@ export default function Navigation() {
             Bulk Order
           </Link>
           
-          {!loading && profile && profile.role === 'admin' && profile.approved && (
+          {/* Admin links shown conditionally */}
+          {mounted && profile?.role === 'admin' && profile.approved && (
             <Link 
               href="/admin" 
               className={`text-amber-900 hover:text-amber-700 ${isActive('/admin') ? 'font-semibold' : ''}`}
@@ -57,7 +83,7 @@ export default function Navigation() {
             </Link>
           )}
           
-          {!loading && profile && profile.role === 'superadmin' && (
+          {mounted && profile?.role === 'superadmin' && (
             <>
               <Link 
                 href="/admin" 
@@ -77,16 +103,16 @@ export default function Navigation() {
 
         {/* Authentication Button */}
         <div className="hidden md:block">
-          {!loading && user ? (
+          {mounted && user ? (
             <div className="flex items-center space-x-2">
-              <Link href="/profile" className={`text-amber-900 hover:text-amber-700 mr-2 ${isActive('/profile') ? 'font-semibold' : ''}`}>
+              <Link 
+                href="/profile" 
+                className={`text-amber-900 hover:text-amber-700 mr-2 ${isActive('/profile') ? 'font-semibold' : ''}`}
+              >
                 My Profile
               </Link>
               <button
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  window.location.href = '/';
-                }}
+                onClick={handleSignOut}
                 className="px-4 py-2 border border-amber-800 text-amber-900 rounded-md hover:bg-amber-800 hover:text-white transition-colors"
               >
                 Sign Out
@@ -94,7 +120,7 @@ export default function Navigation() {
             </div>
           ) : (
             <Link
-              href="/auth"
+              href="/login"
               className="px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition-colors"
             >
               Login / Sign Up
@@ -114,7 +140,7 @@ export default function Navigation() {
         </button>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu - always shows basic navigation */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-amber-50 py-4 border-t border-amber-200">
           <div className="container mx-auto px-4 flex flex-col space-y-3">
@@ -134,7 +160,8 @@ export default function Navigation() {
               Bulk Order
             </Link>
             
-            {!loading && profile && profile.role === 'admin' && profile.approved && (
+            {/* Admin links shown conditionally */}
+            {mounted && profile?.role === 'admin' && profile.approved && (
               <Link 
                 href="/admin" 
                 className={`text-amber-900 hover:text-amber-700 ${isActive('/admin') ? 'font-semibold' : ''}`}
@@ -143,7 +170,7 @@ export default function Navigation() {
               </Link>
             )}
             
-            {!loading && profile && profile.role === 'superadmin' && (
+            {mounted && profile?.role === 'superadmin' && (
               <>
                 <Link 
                   href="/admin" 
@@ -160,23 +187,23 @@ export default function Navigation() {
               </>
             )}
             
-            {!loading && user ? (
+            {mounted && user ? (
               <>
-                <Link href="/profile" className={`text-amber-900 hover:text-amber-700 ${isActive('/profile') ? 'font-semibold' : ''}`}>
+                <Link 
+                  href="/profile" 
+                  className={`text-amber-900 hover:text-amber-700 ${isActive('/profile') ? 'font-semibold' : ''}`}
+                >
                   My Profile
                 </Link>
                 <button
-                  onClick={async () => {
-                    await supabase.auth.signOut();
-                    window.location.href = '/';
-                  }}
+                  onClick={handleSignOut}
                   className="text-left text-amber-900 hover:text-amber-700"
                 >
                   Sign Out
                 </button>
               </>
             ) : (
-              <Link href="/auth" className="text-amber-900 hover:text-amber-700">
+              <Link href="/login" className="text-amber-900 hover:text-amber-700">
                 Login / Sign Up
               </Link>
             )}

@@ -7,7 +7,33 @@ import Image from 'next/image';
 import Footer from '@/components/Footer';
 import { useProfile } from '@/components/ProfileFetcher';
 
-// Component to handle params
+// Error Banner component
+function ErrorBanner({ message }) {
+  const isRecursionError = message && (
+    message.includes('infinite recursion') || 
+    message.includes('Database policy error')
+  );
+
+  return (
+    <div className={`p-4 rounded mb-4 ${isRecursionError ? 'bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700' : 'bg-red-50 border-l-4 border-red-500 text-red-700'}`}>
+      <div className="flex">
+        <div className="ml-3">
+          <p className="text-sm font-medium">{isRecursionError ? 'Database Configuration Issue' : 'Error'}</p>
+          <p className="text-sm">{message}</p>
+          
+          {isRecursionError && (
+            <div className="mt-2 text-xs">
+              <p>This is a known issue with the database security policies.</p>
+              <p>Please ask an administrator to run the <code className="bg-gray-100 px-1 py-0.5 rounded">supabase/fix-recursion.sql</code> script in the Supabase SQL Editor.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Auth Content component that handles authentication logic
 function AuthContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,14 +43,27 @@ function AuthContent() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const { user, profile, refreshUserAndProfile } = useProfile();
+  const [debugInfo, setDebugInfo] = useState(null);
+  const [mounted, setMounted] = useState(false);
+  
+  const { user, profile, refreshProfile } = useProfile();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTimeout = useRef(null);
-  const [debugInfo, setDebugInfo] = useState(null);
+
+  // Mark component as mounted
+  useEffect(() => {
+    setMounted(true);
+    return () => {
+      // Clean up any timeouts on unmount
+      if (redirectTimeout.current) {
+        clearTimeout(redirectTimeout.current);
+      }
+    };
+  }, []);
 
   // Get redirect path from URL, fallback to /profile
-  const redirectTo = searchParams.get('redirectTo') || '/profile';
+  const redirectTo = searchParams?.get('redirectTo') || '/profile';
 
   // Debug function
   const showDebugInfo = async () => {
@@ -48,6 +87,8 @@ function AuthContent() {
 
   // When user or profile changes, check if we can redirect
   useEffect(() => {
+    if (!mounted) return;
+    
     if (user && profile) {
       console.log('User authenticated, profile data:', profile);
       
@@ -57,28 +98,21 @@ function AuthContent() {
       }
 
       // Navigate based on user role
-      if (profile.role === 'admin' && profile.approved) {
-        router.push('/admin');
-      } else if (profile.role === 'superadmin') {
-        router.push('/superadmin');
-      } else if (profile.role === 'user' || (profile.role === 'admin' && !profile.approved)) {
+      try {
+        if (profile.role === 'admin' && profile.approved) {
+          router.push('/admin');
+        } else if (profile.role === 'superadmin') {
+          router.push('/superadmin');
+        } else if (profile.role === 'user' || (profile.role === 'admin' && !profile.approved)) {
+          router.push('/profile');
+        }
+      } catch (err) {
+        console.error('Navigation error:', err);
+        // As a fallback, try to navigate to profile
         router.push('/profile');
       }
     }
-  }, [user, profile, router]);
-
-  // In case redirect doesn't happen automatically after 5 seconds
-  useEffect(() => {
-    // Store the ref in a variable to avoid issues in the cleanup function
-    const timeoutRef = redirectTimeout.current;
-    
-    // Return cleanup function
-    return () => {
-      if (timeoutRef) {
-        clearTimeout(timeoutRef);
-      }
-    };
-  }, []);
+  }, [user, profile, router, mounted]);
 
   const handleSignUp = async (e) => {
     e.preventDefault();
@@ -196,162 +230,99 @@ function AuthContent() {
       if (authError) throw authError;
       if (!signInData?.user) throw new Error('No user returned from Supabase');
       
-      // Get raw session for diagnostics
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log('Current session after sign in:', {
-        exists: !!sessionData?.session,
-        userId: sessionData?.session?.user?.id
-      });
-
-      // Fetch profile using multiple methods for resilience
-      let profile = null;
-      let fetchError = null;
+      // Update UI to show success
+      setMessage('Login successful! Redirecting...');
       
-      // Method 1: Try list query first (more reliable than .single())
+      // Trigger profile refresh using the component's refreshUserAndProfile function
+      if (refreshProfile) {
+        try {
+          await refreshProfile();
+        } catch (refreshError) {
+          console.error('Error refreshing profile:', refreshError);
+          // Check for infinite recursion error
+          if (refreshError && refreshError.message && refreshError.message.includes('infinite recursion')) {
+            setError('Database policy error. Please ask an administrator to run the fix-recursion.sql script.');
+            setLoading(false);
+            return;
+          }
+          // Continue with login process even if refresh fails
+        }
+      }
+      
+      // Determine redirect path
+      let redirectPath = redirectTo;
+      console.log(`Original redirectTo from URL: ${redirectTo}`);
+      
+      // For immediate redirect to non-profile pages
+      if (redirectPath && 
+          redirectPath !== '/profile' && 
+          (redirectPath.includes('/order') || 
+           redirectPath.includes('/gift-card') || 
+           redirectPath.includes('/loyalty'))) {
+        console.log(`Redirecting to content page: ${redirectPath}`);
+        
+        // Use window.location for reliable navigation to content pages
+        if (typeof window !== 'undefined') {
+          window.location.href = redirectPath;
+          return;
+        }
+      }
+      
+      // For profile and admin pages, try to get user role first
       try {
-        console.log('Method 1: Fetching profile via list query');
-        const { data: profiles, error: listError } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', signInData.user.id);
-          
-        console.log('List query result:', {
-          success: !listError,
-          count: profiles?.length || 0
-        });
+          .eq('id', signInData.user.id)
+          .single();
         
-        if (!listError && profiles && profiles.length > 0) {
-          profile = profiles[0];
-          console.log('Profile found via list query:', profile.id);
-        } else if (listError) {
-          console.error('List query error:', listError);
-        } else {
-          console.log('No profiles found with list query');
-        }
-      } catch (err) {
-        console.error('Error in method 1:', err);
-      }
-      
-      // Method 2: Try single query if list query failed
-      if (!profile) {
-        try {
-          console.log('Method 2: Fetching profile via single query');
-          const { data: singleProfile, error: singleError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', signInData.user.id)
-            .single();
-            
-          if (!singleError && singleProfile) {
-            profile = singleProfile;
-            console.log('Profile found via single query:', profile.id);
-          } else if (singleError) {
-            console.error('Single query error:', singleError);
-            fetchError = singleError;
+        if (profileError) {
+          console.error('Profile fetch error:', profileError);
+          // Check for infinite recursion error specifically
+          if (profileError.message && profileError.message.includes('infinite recursion')) {
+            setError('Database policy error detected. Please ask an administrator to run the fix-recursion.sql script.');
+            setLoading(false);
+            return;
           }
-        } catch (err) {
-          console.error('Error in method 2:', err);
-          fetchError = err;
+          throw profileError;
         }
-      }
-      
-      // Method 3: Create profile if not found
-      if (!profile) {
-        try {
-          console.log('Method 3: Creating missing profile');
-          const role = signInData.user.user_metadata?.role || 'user';
-          
-          // First check if profile exists again (race condition check)
-          const { data: doubleCheckProfiles } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', signInData.user.id);
-            
-          if (doubleCheckProfiles && doubleCheckProfiles.length > 0) {
-            profile = doubleCheckProfiles[0];
-            console.log('Profile found on double-check:', profile.id);
+        
+        if (profile) {
+          console.log('Profile data for redirect:', profile);
+          if (profile.role === 'admin' && profile.approved) {
+            redirectPath = '/admin';
+          } else if (profile.role === 'superadmin') {
+            redirectPath = '/superadmin';
           } else {
-            // Create new profile
-            const { data: newProfile, error: insertError } = await supabase
-              .from('profiles')
-              .insert([{ 
-                id: signInData.user.id, 
-                email: signInData.user.email,
-                role: role,
-                approved: role === 'admin' ? false : true,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }])
-              .select()
-              .single();
-              
-            if (insertError) {
-              console.error('Profile creation error:', insertError);
-              fetchError = insertError;
-            } else if (newProfile) {
-              profile = newProfile;
-              console.log('New profile created:', profile.id);
-            }
+            redirectPath = '/profile';
           }
-        } catch (err) {
-          console.error('Error in method 3:', err);
-          fetchError = err;
         }
+      } catch (profileError) {
+        console.error('Error getting profile for redirect:', profileError);
+        // Default to profile page
+        redirectPath = '/profile';
       }
       
-      // Handle final result
-      if (!profile) {
-        // Collect debugging information
-        const debugData = {
-          userId: signInData.user.id,
-          userEmail: signInData.user.email,
-          authStatus: 'success',
-          profileStatus: 'failed',
-          error: fetchError ? {
-            message: fetchError.message,
-            code: fetchError.code,
-            details: fetchError.details,
-            hint: fetchError.hint
-          } : 'Unknown profile fetch error',
-          timestamp: new Date().toISOString()
-        };
-        
-        console.error('All profile fetch methods failed:', debugData);
-        setDebugInfo(debugData);
-        throw new Error('Failed to retrieve user profile. Please try again.');
-      }
+      console.log(`Final redirect path: ${redirectPath}`);
       
-      // Success path
-      console.log('Sign-in completed, profile retrieved:', profile.role);
-      
-      // Redirect by role
-      if (profile.role === 'admin' && profile.approved) {
-        window.location.href = '/admin';
-      } else if (profile.role === 'superadmin') {
-        window.location.href = '/superadmin';
-      } else {
-        window.location.href = '/profile';
+      // Use a simple approach for navigation
+      if (typeof window !== 'undefined') {
+        // Set a small timeout to ensure state updates have time to propagate
+        setTimeout(() => {
+          window.location.href = redirectPath;
+        }, 500);
       }
     } catch (error) {
-      console.error('Sign in error:', error);
-      setError(error.message || 'Failed to sign in');
-      
-      // Add debug info if not already set
-      if (!debugInfo) {
-        setDebugInfo({
-          errorType: error.name,
-          errorMessage: error.message,
-          errorStack: error.stack,
-          timestamp: new Date().toISOString()
-        });
-      }
-    } finally {
+      console.error('Login error:', error);
+      setError(`Login failed: ${error.message}`);
       setLoading(false);
     }
   };
 
-  if (user && !error) {
+  // When user is signed in but there might be an error
+  if (user && !error && message) {
     return (
+<<<<<<< Updated upstream
       <div className="min-h-screen flex flex-col">
         <main className="flex-grow flex items-center justify-center bg-amber-50">
           <div className="max-w-md w-full mx-auto p-8 bg-white rounded-lg shadow-md">
@@ -389,14 +360,50 @@ function AuthContent() {
                 </pre>
               </div>
             )}
+=======
+      <div className="space-y-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-amber-900">You're signed in!</h2>
+          <p className="text-amber-700 mt-2">Redirecting you to your profile...</p>
+        </div>
+        
+        <div className="flex justify-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-amber-900"></div>
+        </div>
+        
+        <div className="text-center">
+          <button 
+            onClick={() => router.push('/profile')}
+            className="px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition-colors"
+          >
+            Go to Profile Now
+          </button>
+        </div>
+        
+        {/* Debug button */}
+        <div className="mt-4 text-center">
+          <button 
+            onClick={showDebugInfo}
+            className="text-xs text-gray-500 underline"
+          >
+            Debug Auth
+          </button>
+        </div>
+        
+        {debugInfo && (
+          <div className="mt-4 p-3 bg-gray-100 rounded text-xs text-left">
+            <pre className="whitespace-pre-wrap overflow-auto max-h-40">
+              {JSON.stringify(debugInfo, null, 2)}
+            </pre>
+>>>>>>> Stashed changes
           </div>
-        </main>
-        <Footer />
+        )}
       </div>
     );
   }
 
   return (
+<<<<<<< Updated upstream
     <div className="min-h-screen flex flex-col">
       <main className="flex-grow flex items-center justify-center bg-amber-50 p-4">
         <div className="max-w-md w-full bg-white rounded-lg shadow-md overflow-hidden">
@@ -412,160 +419,164 @@ function AuthContent() {
                  isAdminSignUp ? 'Admin accounts require approval' : 'Join Art Coffee today'}
               </p>
             </div>
+=======
+    <div>
+      <h2 className="text-2xl font-bold text-center text-amber-900 mb-1">
+        {!isSignUp ? 'Welcome Back' : 
+         isAdminSignUp ? 'Create Admin Account' : 'Create Customer Account'}
+      </h2>
+      <p className="text-center text-amber-700 mb-6">
+        {!isSignUp ? 'Sign in to your account' : 
+         isAdminSignUp ? 'Admin accounts require approval' : 'Join Art Coffee today'}
+      </p>
+>>>>>>> Stashed changes
 
-            {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                {error}
-              </div>
-            )}
-
-            {message && (
-              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                {message}
-              </div>
-            )}
-
-            {loading && (
-              <div className="flex justify-center my-4">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-amber-500 border-r-transparent"></div>
-              </div>
-            )}
-
-            <form onSubmit={isSignUp ? handleSignUp : handleSignIn}>
-              <div className="mb-4">
-                <label htmlFor="email" className="block text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="mb-4">
-                <label htmlFor="password" className="block text-gray-700 mb-2">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  disabled={loading}
-                />
-              </div>
-
-              {isSignUp && (
-                <div className="mb-4">
-                  <label htmlFor="confirmPassword" className="block text-gray-700 mb-2">
-                    Confirm Password
-                  </label>
-                  <input
-                    id="confirmPassword"
-                    type="password"
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    disabled={loading}
-                  />
-                </div>
-              )}
-
-              {isAdminSignUp && (
-                <div className="mb-4">
-                  <div className="p-3 bg-amber-50 rounded-md text-sm text-amber-800">
-                    <p><strong>Note:</strong> Admin accounts require approval from a superadmin before accessing admin features.</p>
-                  </div>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                className="w-full bg-amber-800 text-white py-2 rounded hover:bg-amber-700 transition-colors"
-                disabled={loading}
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-                    {isSignUp ? 'Creating Account...' : 'Signing In...'}
-                  </span>
-                ) : (
-                  <span>{isSignUp ? 'Sign Up' : 'Sign In'}</span>
-                )}
-              </button>
-            </form>
-
-            <div className="mt-6 text-center">
-              {!isSignUp ? (
-                <div className="space-y-3">
-                  <button
-                    onClick={() => {
-                      setIsSignUp(true);
-                      setIsAdminSignUp(false);
-                      setError('');
-                      setMessage('');
-                    }}
-                    className="text-amber-800 hover:text-amber-700"
-                  >
-                    Don&apos;t have an account? Sign up as Customer
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      setIsSignUp(true);
-                      setIsAdminSignUp(true);
-                      setError('');
-                      setMessage('');
-                    }}
-                    className="block w-full text-amber-800 hover:text-amber-700"
-                  >
-                    Sign up as Admin
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    setIsSignUp(false);
-                    setIsAdminSignUp(false);
-                    setError('');
-                    setMessage('');
-                  }}
-                  className="text-amber-800 hover:text-amber-700"
-                >
-                  Already have an account? Sign In
-                </button>
-              )}
-            </div>
-            
-            {/* Debug button */}
-            <div className="mt-4 text-center">
-              <button 
-                onClick={showDebugInfo}
-                className="text-xs text-gray-500 underline"
-              >
-                Debug Auth
-              </button>
-            </div>
-            
-            {debugInfo && (
-              <div className="mt-4 p-3 bg-gray-100 rounded text-xs text-left">
-                <pre className="whitespace-pre-wrap overflow-auto max-h-40">
-                  {JSON.stringify(debugInfo, null, 2)}
-                </pre>
-              </div>
-            )}
-          </div>
+      {message && (
+        <div className="p-4 bg-green-50 border-l-4 border-green-500 text-green-700 mb-4">
+          <p>{message}</p>
         </div>
-      </main>
-      <Footer />
+      )}
+      
+      {error && <ErrorBanner message={error} />}
+
+      {loading && (
+        <div className="flex justify-center my-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-amber-500 border-r-transparent"></div>
+        </div>
+      )}
+
+      <form onSubmit={isSignUp ? handleSignUp : handleSignIn} className="space-y-4">
+        <div>
+          <label htmlFor="email" className="block text-gray-700 mb-2 font-medium">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            disabled={loading}
+            placeholder="your.email@example.com"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="password" className="block text-gray-700 mb-2 font-medium">
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            disabled={loading}
+            placeholder={isSignUp ? "Create a secure password" : "Enter your password"}
+          />
+        </div>
+
+        {isSignUp && (
+          <div>
+            <label htmlFor="confirmPassword" className="block text-gray-700 mb-2 font-medium">
+              Confirm Password
+            </label>
+            <input
+              id="confirmPassword"
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              disabled={loading}
+              placeholder="Confirm your password"
+            />
+          </div>
+        )}
+
+        {isAdminSignUp && (
+          <div className="p-3 bg-amber-50 rounded-md text-sm text-amber-800">
+            <p><strong>Note:</strong> Admin accounts require approval from a superadmin before accessing admin features.</p>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          className="w-full bg-amber-800 text-white py-3 rounded-md hover:bg-amber-700 transition-colors font-medium"
+          disabled={loading}
+        >
+          {loading ? (
+            <span className="flex items-center justify-center">
+              <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
+              {isSignUp ? 'Creating Account...' : 'Signing In...'}
+            </span>
+          ) : (
+            <span>{isSignUp ? 'Sign Up' : 'Sign In'}</span>
+          )}
+        </button>
+      </form>
+
+      <div className="mt-6 text-center">
+        {!isSignUp ? (
+          <div className="space-y-3">
+            <button
+              onClick={() => {
+                setIsSignUp(true);
+                setIsAdminSignUp(false);
+                setError('');
+                setMessage('');
+              }}
+              className="text-amber-800 hover:text-amber-700 font-medium"
+            >
+              Don&apos;t have an account? Sign up as Customer
+            </button>
+            
+            <button
+              onClick={() => {
+                setIsSignUp(true);
+                setIsAdminSignUp(true);
+                setError('');
+                setMessage('');
+              }}
+              className="block w-full text-amber-800 hover:text-amber-700 font-medium"
+            >
+              Sign up as Admin
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => {
+              setIsSignUp(false);
+              setIsAdminSignUp(false);
+              setError('');
+              setMessage('');
+            }}
+            className="text-amber-800 hover:text-amber-700 font-medium"
+          >
+            Already have an account? Sign In
+          </button>
+        )}
+      </div>
+      
+      {/* Debug button */}
+      <div className="mt-4 text-center">
+        <button 
+          onClick={showDebugInfo}
+          className="text-xs text-gray-500 hover:underline"
+        >
+          Debug Auth
+        </button>
+      </div>
+      
+      {debugInfo && (
+        <div className="mt-4 p-3 bg-gray-100 rounded text-xs text-left">
+          <pre className="whitespace-pre-wrap overflow-auto max-h-40">
+            {JSON.stringify(debugInfo, null, 2)}
+          </pre>
+        </div>
+      )}
     </div>
   );
 }
@@ -573,18 +584,34 @@ function AuthContent() {
 // Main Auth component with Suspense boundary
 export default function AuthPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex flex-col">
-        <main className="flex-grow flex items-center justify-center bg-amber-50">
-          <div className="text-center p-8">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-amber-800 border-r-transparent align-[-0.125em]"></div>
-            <p className="mt-4 text-amber-900">Loading authentication...</p>
+    <Suspense fallback={<div className="min-h-screen bg-amber-50 flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-900"></div></div>}>
+      <div className="min-h-screen bg-amber-50 flex flex-col">
+        <div className="flex-grow flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg">
+            <div className="flex justify-center mb-6">
+              <Link href="/">
+                <Image 
+                  src="/images/logo.png" 
+                  alt="Art Coffee Logo" 
+                  width={100} 
+                  height={100} 
+                  className="cursor-pointer"
+                  priority
+                />
+              </Link>
+            </div>
+            <div className="mb-6 text-center">
+              <h1 className="text-2xl font-bold text-amber-900">Art Coffee</h1>
+              <p className="text-amber-700">Sign in to access your account</p>
+            </div>
+            <AuthContent />
+            <div className="mt-6 text-center text-sm text-gray-500">
+              <p>Having trouble? Contact support at <a href="mailto:support@artcoffee.com" className="text-amber-700 hover:underline">support@artcoffee.com</a></p>
+            </div>
           </div>
-        </main>
+        </div>
         <Footer />
       </div>
-    }>
-      <AuthContent />
     </Suspense>
   );
 } 

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
@@ -13,55 +13,142 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formStatus, setFormStatus] = useState('');
+  const [isClient, setIsClient] = useState(false);
+  const [debug, setDebug] = useState({});
+  
+  // Use useEffect to mark when component has mounted on client
+  useEffect(() => {
+    setIsClient(true);
+    console.log('Login page mounted on client');
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     setFormStatus('loading');
+    setDebug({});
 
     try {
+      console.log('Attempting login with:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('Auth error:', error);
+        setDebug(prev => ({ ...prev, authError: error }));
         throw error;
       }
 
+      console.log('Login successful, user:', data.user.id);
+      setDebug(prev => ({ ...prev, user: data.user }));
+
       // Get user role to determine redirection
-      const { data: profile } = await supabase
+      let { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', data.user.id)
         .single();
 
-      setFormStatus('success');
-      
-      // Redirect based on role
-      if (profile) {
-        switch (profile.role) {
-          case 'superadmin':
-            router.push('/superadmin');
-            break;
-          case 'admin':
-            router.push('/admin');
-            break;
-          default:
-            router.push('/order');
+      if (profileError) {
+        console.warn('Profile fetch error:', profileError);
+        setDebug(prev => ({ ...prev, profileError }));
+        
+        // If no profile exists, create one automatically
+        console.log('Creating default user profile');
+        const { error: insertError, data: insertData } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: data.user.id,
+              email: data.user.email,
+              role: 'user',
+              approved: true,
+              created_at: new Date().toISOString()
+            },
+          ])
+          .select()
+          .single();
+          
+        if (insertError) {
+          console.error('Profile creation error:', insertError);
+          setDebug(prev => ({ ...prev, insertError }));
+        } else {
+          console.log('Created new profile:', insertData);
+          profile = insertData;
+          setDebug(prev => ({ ...prev, createdProfile: insertData }));
         }
       } else {
-        // If no profile exists, redirect to order page
-        router.push('/order');
+        console.log('Found existing profile:', profile);
+        setDebug(prev => ({ ...prev, profile }));
       }
+
+      setFormStatus('success');
+      
+      // Force a small delay before redirection to ensure state updates
+      setTimeout(() => {
+        try {
+          // Determine redirect URL
+          let redirectUrl = '/order'; // Default
+          
+          if (profile) {
+            switch (profile.role) {
+              case 'superadmin':
+                redirectUrl = '/superadmin';
+                break;
+              case 'admin':
+                redirectUrl = '/admin';
+                break;
+              default:
+                redirectUrl = '/order';
+            }
+          }
+          
+          console.log(`Redirecting to ${redirectUrl}`);
+          setDebug(prev => ({ ...prev, redirectUrl }));
+          
+          // Use window.location for more reliable navigation
+          window.location.href = redirectUrl;
+        } catch (navError) {
+          console.error('Navigation error:', navError);
+          setDebug(prev => ({ ...prev, navError }));
+          // Fallback to router.push
+          router.push('/');
+        }
+      }, 500);
     } catch (error) {
+      console.error('Login process error:', error);
       setError(error.message || 'An error occurred during login');
       setFormStatus('error');
+      setDebug(prev => ({ ...prev, finalError: error }));
     } finally {
       setLoading(false);
     }
   };
+
+  // Only render the form if we're on the client
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <Navigation />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="animate-pulse flex space-x-4">
+            <div className="flex-1 space-y-6 py-1">
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="space-y-3">
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -134,12 +221,12 @@ export default function LoginPage() {
                   }`}
                   disabled={loading}
                 >
-                  {formStatus === 'loading' ? (
+                  {formStatus === 'loading' && (
                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                  ) : null}
+                  )}
                   {formStatus === 'loading' ? 'Logging in...' : 'Log In'}
                 </button>
               </div>
@@ -170,6 +257,15 @@ export default function LoginPage() {
               </Link>
             </p>
           </div>
+          
+          {Object.keys(debug).length > 0 && (
+            <div className="mt-8 p-4 bg-gray-50 rounded-lg overflow-auto">
+              <h3 className="font-bold mb-2 text-sm">Debug Info:</h3>
+              <pre className="text-xs whitespace-pre-wrap">
+                {JSON.stringify(debug, null, 2)}
+              </pre>
+            </div>
+          )}
         </div>
       </div>
 

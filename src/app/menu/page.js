@@ -1,7 +1,16 @@
 'use client';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Navigation from '@/components/Navigation';
+import Footer from '@/components/Footer';
 
 export default function MenuPage() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
   const menuCategories = [
     {
       title: 'Hot Coffees',
@@ -44,25 +53,8 @@ export default function MenuPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Navigation Bar */}
-      <nav className="bg-card-bg border-b border-card-border">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold text-primary">
-            Art Coffee
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/about" className="text-secondary hover:text-primary transition-colors">
-              About Us
-            </Link>
-            <Link href="/contact" className="text-secondary hover:text-primary transition-colors">
-              Contact
-            </Link>
-            <Link href="/auth" className="btn-primary px-4 py-2 rounded">
-              Login
-            </Link>
-          </div>
-        </div>
-      </nav>
+      {/* Use the shared Navigation component */}
+      <Navigation />
 
       {/* Hero Section */}
       <section className="py-20 text-center bg-card-bg">
@@ -128,50 +120,8 @@ export default function MenuPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-card-bg border-t border-card-border py-8">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <h3 className="text-lg font-semibold text-primary mb-4">Art Coffee</h3>
-              <p className="text-secondary">
-                Crafting the perfect cup, one bean at a time
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-primary mb-4">Quick Links</h3>
-              <ul className="space-y-2">
-                <li>
-                  <Link href="/about" className="text-secondary hover:text-primary">
-                    About Us
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/contact" className="text-secondary hover:text-primary">
-                    Contact
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/menu" className="text-secondary hover:text-primary">
-                    Menu
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-primary mb-4">Contact Us</h3>
-              <p className="text-secondary">
-                Email: info@artcoffee.com<br />
-                Phone: (123) 456-7890<br />
-                Address: 123 Coffee Street, City
-              </p>
-            </div>
-          </div>
-          <div className="mt-8 text-center text-secondary">
-            <p>© 2024 Art Coffee. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      {/* Use the shared Footer component */}
+      <Footer />
     </div>
   );
 } 

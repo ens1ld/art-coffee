@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
+import { useProfile } from '@/components/ProfileFetcher';
 
 export default function LoyaltyPage() {
   const [transactions, setTransactions] = useState([]);
@@ -11,22 +12,46 @@ export default function LoyaltyPage() {
   const [status, setStatus] = useState('');
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { user: profileUser, loading: profileLoading } = useProfile();
 
   useEffect(() => {
-    const getUser = async () => {
-      setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
-      
-      if (session?.user) {
-        await fetchLoyaltyData(session.user.id);
-      }
-      
+    // Guest users can browse loyalty program info without logging in
+    // Only set the user if available from profile context
+    if (profileUser) {
+      console.log('Using profile user in loyalty page:', profileUser.email);
+      setUser(profileUser);
+      // Only fetch loyalty data for authenticated users
+      fetchLoyaltyData(profileUser.id);
       setLoading(false);
+      return;
+    } 
+    
+    // Set loading to false if profile is not loading - guest user view
+    if (!profileLoading) {
+      setLoading(false);
+    }
+    
+    // Optional check for Supabase session - don't show loading UI for guests
+    const getUser = async () => {
+      try {
+        console.log('Fetching user directly in loyalty page');
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          setUser(session.user);
+          await fetchLoyaltyData(session.user.id);
+        }
+        
+        // Always ensure loading is set to false
+        setLoading(false);
+      } catch (err) {
+        console.error('Error checking auth in loyalty page:', err);
+        setLoading(false); // Ensure loading is turned off even on error
+      }
     };
     
     getUser();
-  }, []);
+  }, [profileUser, profileLoading]);
 
   const fetchLoyaltyData = async (userId) => {
     const { data, error } = await supabase

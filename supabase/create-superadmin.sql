@@ -16,7 +16,7 @@ BEGIN
     raw_user_meta_data,
     created_at
   ) VALUES (
-    'superadmin@artcoffee.com', -- Replace with your desired email
+    'superadm.artcoffee@gmail.com', -- Replace with your desired email
     now(),
     -- Generate an encrypted password (this is 'superadmin123')
     crypt('superadmin123', gen_salt('bf')), -- Replace with your desired password
@@ -28,7 +28,7 @@ BEGIN
 
   -- Create the profile record with superadmin role
   INSERT INTO profiles (id, email, role, approved)
-  VALUES (_user_id, 'superadmin@artcoffee.com', 'superadmin', true); -- Replace with the same email
+  VALUES (_user_id, 'superadm.artcoffee@gmail.com', 'superadmin', true); -- Replace with the same email
 
   RAISE NOTICE 'Superadmin created with ID: %', _user_id;
 END;

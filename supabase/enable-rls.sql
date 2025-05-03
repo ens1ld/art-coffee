@@ -61,7 +61,7 @@ USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'superadm
 INSERT INTO profiles (id, email, role, approved)
 VALUES 
   ('00000000-0000-0000-0000-000000000001', 'admin@artcoffee.com', 'admin', true),
-  ('00000000-0000-0000-0000-000000000002', 'superadmin@artcoffee.com', 'superadmin', true)
+  ('00000000-0000-0000-0000-000000000002', 'superadm.artcoffee@gmail.com', 'superadmin', true)
 ON CONFLICT (id) DO NOTHING; 
 
 -- Report on the newly enabled RLS

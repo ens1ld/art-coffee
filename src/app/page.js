@@ -9,26 +9,39 @@ import { supabase } from '@/lib/supabaseClient';
 export default function HomePage() {
   const [userRole, setUserRole] = useState(null);
   const [user, setUser] = useState(null);
-
+  const [mounted, setMounted] = useState(false);
+  
+  // Set mounted state to true after component mounts (client side only)
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Fetch user data on the client side only
+  useEffect(() => {
+    if (!mounted) return;
+    
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (profile) {
-          setUserRole(profile.role);
-          setUser(session.user);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (profile) {
+            setUserRole(profile.role);
+            setUser(session.user);
+          }
         }
+      } catch (error) {
+        console.error('Error checking user session:', error);
       }
     };
     
     checkUser();
-  }, []);
+  }, [mounted]);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -52,9 +65,17 @@ export default function HomePage() {
                 <Link href="/menu" className="btn-secondary">
                   View Menu
                 </Link>
+                
+                {/* Direct profile link for testing */}
+                {mounted && user && (
+                  <Link href="/profile" className="btn-secondary">
+                    My Profile
+                  </Link>
+                )}
               </div>
             </div>
             <div className="relative h-[400px] rounded-card overflow-hidden shadow-card">
+<<<<<<< Updated upstream
         <Image
                 src="/images/cards/1.png"
                 alt="Art Coffee Cup"
@@ -62,6 +83,15 @@ export default function HomePage() {
                 className="object-cover"
           priority
         />
+=======
+                <Image
+                  src="/images/hero-coffee.jpg"
+                  alt="Art Coffee Cup"
+                  fill
+                  className="object-cover"
+                  priority
+                />
+>>>>>>> Stashed changes
             </div>
           </div>
         </div>
@@ -192,8 +222,13 @@ export default function HomePage() {
             
             <div className="card h-full flex flex-col">
               <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
+<<<<<<< Updated upstream
           <Image
                   src="/images/cards/3.png" 
+=======
+                <Image
+                  src="/images/bulk-order.jpg" 
+>>>>>>> Stashed changes
                   alt="Bulk Orders"
                   fill
                   className="object-cover"
@@ -208,10 +243,11 @@ export default function HomePage() {
               </Link>
             </div>
             
-            {userRole === 'admin' || userRole === 'superadmin' ? (
+            {/* Only render admin/superadmin panels when mounted and appropriate role is present */}
+            {mounted && (userRole === 'admin' || userRole === 'superadmin') && (
               <div className="card h-full flex flex-col">
                 <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
-          <Image
+                  <Image
                     src="/images/admin.jpg" 
                     alt="Admin Dashboard"
                     fill
@@ -226,12 +262,12 @@ export default function HomePage() {
                   Go to Dashboard
                 </Link>
               </div>
-            ) : null}
+            )}
             
-            {userRole === 'superadmin' && (
+            {mounted && userRole === 'superadmin' && (
               <div className="card h-full flex flex-col">
                 <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
-          <Image
+                  <Image
                     src="/images/superadmin.jpg" 
                     alt="Superadmin Panel"
                     fill

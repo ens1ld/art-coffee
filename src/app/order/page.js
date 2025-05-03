@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { supabase } from '@/lib/supabaseClient';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import { useProfile } from '@/components/ProfileFetcher';
 
 export default function OrderPage() {
   const [products, setProducts] = useState([
@@ -62,15 +63,33 @@ export default function OrderPage() {
   const [quantity, setQuantity] = useState(1);
   const [orderStatus, setOrderStatus] = useState('');
   const [user, setUser] = useState(null);
+  const { user: profileUser } = useProfile();
 
   useEffect(() => {
+    // Guest users can browse the menu without logging in
+    // Only set the user if available from profile context or session
+    if (profileUser) {
+      console.log('Using profile user in order page:', profileUser.email);
+      setUser(profileUser);
+      return;
+    }
+    
+    // Optional check for Supabase session - no need to show loading UI for this
     const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
+      try {
+        console.log('Fetching user directly in order page');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser(session.user);
+        }
+      } catch (err) {
+        console.error('Error checking auth in order page:', err);
+        // Continue as guest on error
+      }
     };
     
     getUser();
-  }, []);
+  }, [profileUser]);
 
   const resetCustomization = () => {
     setCustomization({
@@ -155,6 +174,7 @@ export default function OrderPage() {
 
   const handleCheckout = async () => {
     if (!user) {
+      console.log('No user found, showing login required message');
       setOrderStatus('login-required');
       return;
     }
@@ -551,7 +571,7 @@ export default function OrderPage() {
                             </svg>
                           </button>
                         </div>
-                      </div>
+          </div>
         ))}
       </div>
                   

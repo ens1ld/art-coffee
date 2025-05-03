@@ -5,6 +5,7 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useProfile } from '@/components/ProfileFetcher';
 
 export default function GiftCardPage() {
   const [receiverEmail, setReceiverEmail] = useState('');
@@ -13,15 +14,33 @@ export default function GiftCardPage() {
   const [status, setStatus] = useState('');
   const [selectedDesign, setSelectedDesign] = useState(0);
   const [user, setUser] = useState(null);
+  const { user: profileUser } = useProfile();
 
   useEffect(() => {
+    // Guest users can browse gift card options without logging in
+    // Only set the user if available from profile context or session
+    if (profileUser) {
+      console.log('Using profile user in gift card page:', profileUser.email);
+      setUser(profileUser);
+      return;
+    }
+    
+    // Optional check for Supabase session - no need to show loading UI for this
     const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
+      try {
+        console.log('Fetching user directly in gift card page');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser(session.user);
+        }
+      } catch (err) {
+        console.error('Error checking auth in gift card page:', err);
+        // Continue as guest on error
+      }
     };
     
     getUser();
-  }, []);
+  }, [profileUser]);
 
   const giftCardDesigns = [
     { id: 0, name: "Classic Coffee", image: "/images/gift-cards/1.png", color: "bg-[#8B4513]" },
@@ -36,6 +55,7 @@ export default function GiftCardPage() {
     e.preventDefault();
     
     if (!user) {
+      console.log('No user found, showing login required message');
       setStatus('login-required');
       return;
     }

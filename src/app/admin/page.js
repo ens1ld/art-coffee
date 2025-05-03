@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useProfile } from '@/components/ProfileFetcher';
 import Navigation from '@/components/Navigation';
@@ -17,7 +18,7 @@ export default function AdminPage() {
   // Check authentication and authorization
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/auth?redirectTo=/admin');
+      router.push('/login?redirectTo=/admin');
     } else if (!loading && profile && profile.role !== 'admin' && profile.role !== 'superadmin') {
       router.push('/not-authorized');
     } else if (!loading && profile && profile.role === 'admin' && !profile.approved) {
@@ -34,12 +35,12 @@ export default function AdminPage() {
         setFetchingOrders(true);
         
         // Get order count
-        const { data: countData, error: countError } = await supabase
+        const { count: orderCountResult, error: countError } = await supabase
           .from('orders')
-          .select('id', { count: 'exact', head: true });
+          .select('*', { count: 'exact', head: true });
         
         if (countError) throw countError;
-        setOrderCount(countData?.length || 0);
+        setOrderCount(orderCountResult || 0);
         
         // Get recent orders
         const { data: orderData, error: orderError } = await supabase
@@ -88,7 +89,7 @@ export default function AdminPage() {
               <p>{error || 'Authentication required to access admin dashboard'}</p>
             </div>
             <button 
-              onClick={() => router.push('/auth?redirectTo=/admin')}
+              onClick={() => router.push('/login?redirectTo=/admin')}
               className="px-4 py-2 bg-amber-800 text-white rounded hover:bg-amber-700"
             >
               Sign In
@@ -143,11 +144,23 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       <Navigation />
-      <main className="flex-grow p-6">
+      
+      <main className="flex-grow py-8 px-4">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold text-amber-900 mb-8">Admin Dashboard</h1>
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-3xl font-bold text-amber-900">Admin Dashboard</h1>
+            
+            {profile.role === 'superadmin' && (
+              <Link 
+                href="/superadmin"
+                className="bg-amber-900 text-white px-4 py-2 rounded-md hover:bg-amber-800 transition-colors"
+              >
+                Go to Superadmin
+              </Link>
+            )}
+          </div>
           
           {dashboardError && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
@@ -155,8 +168,8 @@ export default function AdminPage() {
             </div>
           )}
           
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-amber-50 p-6 rounded-lg shadow-md">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white p-6 rounded-lg shadow-md">
               <h2 className="text-xl font-semibold text-amber-800 mb-2">Orders</h2>
               <p className="text-3xl font-bold">
                 {fetchingOrders ? (
@@ -166,36 +179,48 @@ export default function AdminPage() {
                 )}
               </p>
               <p className="text-sm text-gray-500 mt-2">Total orders placed</p>
-              <button 
-                onClick={() => router.push('/admin/orders')}
-                className="mt-4 text-amber-700 hover:text-amber-600"
+              <Link 
+                href="/admin/orders"
+                className="mt-4 text-amber-700 hover:text-amber-600 inline-block"
               >
                 View all orders →
-              </button>
+              </Link>
             </div>
             
-            <div className="bg-amber-50 p-6 rounded-lg shadow-md">
+            <div className="bg-white p-6 rounded-lg shadow-md">
               <h2 className="text-xl font-semibold text-amber-800 mb-2">Products</h2>
               <p className="text-3xl font-bold">--</p>
               <p className="text-sm text-gray-500 mt-2">Available products</p>
-              <button 
-                onClick={() => router.push('/admin/products')}
-                className="mt-4 text-amber-700 hover:text-amber-600"
+              <Link 
+                href="/admin/products"
+                className="mt-4 text-amber-700 hover:text-amber-600 inline-block"
               >
                 Manage products →
-              </button>
+              </Link>
             </div>
             
-            <div className="bg-amber-50 p-6 rounded-lg shadow-md">
+            <div className="bg-white p-6 rounded-lg shadow-md">
               <h2 className="text-xl font-semibold text-amber-800 mb-2">Gift Cards</h2>
               <p className="text-3xl font-bold">--</p>
               <p className="text-sm text-gray-500 mt-2">Active gift cards</p>
-              <button 
-                onClick={() => router.push('/admin/gift-cards')}
-                className="mt-4 text-amber-700 hover:text-amber-600"
+              <Link 
+                href="/admin/gift-cards"
+                className="mt-4 text-amber-700 hover:text-amber-600 inline-block"
               >
                 View gift cards →
-              </button>
+              </Link>
+            </div>
+            
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h2 className="text-xl font-semibold text-amber-800 mb-2">Customers</h2>
+              <p className="text-3xl font-bold">--</p>
+              <p className="text-sm text-gray-500 mt-2">Registered customers</p>
+              <Link 
+                href="/admin/customers"
+                className="mt-4 text-amber-700 hover:text-amber-600 inline-block"
+              >
+                View customers →
+              </Link>
             </div>
           </div>
           
@@ -218,9 +243,9 @@ export default function AdminPage() {
                       <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody>
                     {recentOrders.map((order) => (
-                      <tr key={order.id} className="hover:bg-gray-50">
+                      <tr key={order.id} className="hover:bg-gray-50 border-b border-gray-100">
                         <td className="py-3 px-4 text-sm">{order.id.substring(0, 8)}...</td>
                         <td className="py-3 px-4 text-sm">{order.profiles?.email || 'Anonymous'}</td>
                         <td className="py-3 px-4 text-sm">
@@ -256,22 +281,30 @@ export default function AdminPage() {
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold text-amber-800 mb-4">Quick Actions</h2>
             
-            <div className="grid md:grid-cols-2 gap-4">
-              <button 
-                onClick={() => router.push('/admin/new-product')}
-                className="p-4 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors text-left"
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Link 
+                href="/admin/new-product"
+                className="p-4 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors text-left flex flex-col"
               >
                 <h3 className="font-medium text-amber-900">Add New Product</h3>
                 <p className="text-sm text-gray-600 mt-1">Create a new product in the catalog</p>
-              </button>
+              </Link>
               
-              <button 
-                onClick={() => router.push('/admin/reports')}
-                className="p-4 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors text-left"
+              <Link 
+                href="/admin/reports"
+                className="p-4 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors text-left flex flex-col"
               >
                 <h3 className="font-medium text-amber-900">Generate Reports</h3>
                 <p className="text-sm text-gray-600 mt-1">View sales and customer reports</p>
-              </button>
+              </Link>
+              
+              <Link 
+                href="/admin/loyalty"
+                className="p-4 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors text-left flex flex-col"
+              >
+                <h3 className="font-medium text-amber-900">Loyalty Program</h3>
+                <p className="text-sm text-gray-600 mt-1">Manage loyalty points and rewards</p>
+              </Link>
             </div>
           </div>
         </div>
