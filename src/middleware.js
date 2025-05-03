@@ -27,7 +27,12 @@ export async function middleware(request) {
   const supabase = createMiddlewareClient({ req: request, res });
 
   // Get the session
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError) {
+    console.error('Session error in middleware:', sessionError);
+    return res;
+  }
 
   // Define protected routes and their required roles
   const protectedRoutes = {
@@ -42,8 +47,13 @@ export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
   // Special cases - allow these routes
-  if (pathname === '/auth/callback' || pathname === '/super') {
+  if (pathname === '/auth/callback' || pathname === '/super' || pathname.startsWith('/_next') || pathname.includes('.')) {
     return res;
+  }
+
+  // If user is authenticated and tries to access auth page, redirect to home
+  if (pathname === '/auth' && session) {
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   // Check if the requested path is a protected route
@@ -59,47 +69,70 @@ export async function middleware(request) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    // Get user's role from the session
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, approved')
-      .eq('id', session.user.id)
-      .single();
+    try {
+      // Get user's role from the session
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role, approved')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (profileError) {
+        console.error('Error fetching profile in middleware:', profileError);
+        // If we can't get the profile, let the request proceed and handle the error in the page
+        return res;
+      }
 
-    const userRole = profile?.role || 'user';
-    const isApproved = profile?.approved ?? true;
+      if (!profile) {
+        console.warn('No profile found for user in middleware');
+        // If user has no profile, redirect to auth to potentially recreate the profile
+        return NextResponse.redirect(new URL('/auth', request.url));
+      }
 
-    // For admin routes, check if the admin is approved
-    if (userRole === 'admin' && !isApproved && pathname.startsWith('/admin')) {
-      return NextResponse.redirect(new URL('/pending-approval', request.url));
+      const userRole = profile.role || 'user';
+      const isApproved = profile.approved ?? true;
+
+      // For admin routes, check if the admin is approved
+      if (userRole === 'admin' && !isApproved && pathname.startsWith('/admin')) {
+        return NextResponse.redirect(new URL('/pending-approval', request.url));
+      }
+
+      // Check if user has required role for the route
+      const requiredRoles = protectedRoutes[Object.keys(protectedRoutes).find(route => 
+        pathname.startsWith(route)
+      )];
+
+      if (!requiredRoles.includes(userRole)) {
+        return NextResponse.redirect(new URL('/not-authorized', request.url));
+      }
+    } catch (error) {
+      console.error('Unexpected error in middleware:', error);
+      // In case of any error, allow the request to proceed and let the page handle it
+      return res;
     }
-
-    // Check if user has required role for the route
-    const requiredRoles = protectedRoutes[Object.keys(protectedRoutes).find(route => 
-      pathname.startsWith(route)
-    )];
-
-    if (!requiredRoles.includes(userRole)) {
-      return NextResponse.redirect(new URL('/not-authorized', request.url));
-    }
-  }
-
-  // If user is authenticated and tries to access auth page, redirect to home
-  if (pathname === '/auth' && session) {
-    return NextResponse.redirect(new URL('/', request.url));
   }
 
   // If user is authenticated and tries to access pending-approval but is not a pending admin
   if (pathname === '/pending-approval' && session) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, approved')
-      .eq('id', session.user.id)
-      .single();
-    
-    // If not an admin or already approved, redirect
-    if (!profile || profile.role !== 'admin' || profile.approved) {
-      return NextResponse.redirect(new URL('/', request.url));
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role, approved')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (profileError) {
+        console.error('Error fetching profile for pending-approval check:', profileError);
+        return res;
+      }
+      
+      // If not an admin or already approved, redirect
+      if (!profile || profile.role !== 'admin' || profile.approved) {
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+    } catch (error) {
+      console.error('Error checking pending approval status:', error);
+      return res;
     }
   }
 

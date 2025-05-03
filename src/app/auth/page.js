@@ -16,6 +16,7 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [formStatus, setFormStatus] = useState('');
   const [userSession, setUserSession] = useState(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const router = useRouter();
 
   // Get the redirectTo from URL or use default
@@ -35,83 +36,63 @@ export default function AuthPage() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUserSession(session);
-      
-      if (session) {
-        // Get user profile to determine role
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role, approved')
-          .eq('id', session.user.id)
-          .single();
+      try {
+        // Get session from Supabase
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Error checking session:', sessionError);
+          setSessionChecked(true);
+          return;
+        }
 
-        if (profile) {
-          // For admin users, check if they're approved
-          if (profile.role === 'admin' && !profile.approved) {
-            router.push('/pending-approval');
+        setUserSession(session);
+        
+        if (session) {
+          // Get user profile to determine role
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('role, approved')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profileError) {
+            console.error('Error fetching profile:', profileError);
+            setSessionChecked(true);
             return;
           }
-          
-          // Redirect based on role
-          switch (profile.role) {
-            case 'superadmin':
-              router.push('/superadmin');
-              break;
-            case 'admin':
-              router.push('/admin');
-              break;
-            default:
-              router.push(getRedirectPath());
+
+          if (profile) {
+            // For admin users, check if they're approved
+            if (profile.role === 'admin' && !profile.approved) {
+              router.push('/pending-approval');
+              return;
+            }
+            
+            // Redirect based on role
+            switch (profile.role) {
+              case 'superadmin':
+                router.push('/superadmin');
+                break;
+              case 'admin':
+                router.push('/admin');
+                break;
+              default:
+                router.push(getRedirectPath());
+            }
+          } else {
+            router.push(getRedirectPath());
           }
         } else {
-          router.push(getRedirectPath());
+          setSessionChecked(true);
         }
+      } catch (err) {
+        console.error('Unexpected error during session check:', err);
+        setSessionChecked(true);
       }
     };
     
     checkSession();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        setUserSession(session);
-        // Get user profile to determine role
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role, approved')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profile) {
-          // For admin users, check if they're approved
-          if (profile.role === 'admin' && !profile.approved) {
-            router.push('/pending-approval');
-            return;
-          }
-          
-          // Redirect based on role
-          switch (profile.role) {
-            case 'superadmin':
-              router.push('/superadmin');
-              break;
-            case 'admin':
-              router.push('/admin');
-              break;
-            default:
-              router.push(getRedirectPath(profile.role));
-          }
-        } else {
-          router.push(getRedirectPath());
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setUserSession(null);
-      }
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
   }, [router]);
 
   const handleSignUp = async (e) => {
@@ -202,11 +183,16 @@ export default function AuthPage() {
         setFormStatus('signin-success');
         
         // Get user profile to determine role
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('role, approved')
           .eq('id', data.user.id)
           .single();
+
+        if (profileError) {
+          console.error('Error fetching profile after signin:', profileError);
+          throw new Error('Failed to retrieve user profile. Please try again.');
+        }
 
         // For admin users, check if they're approved
         if (profile && profile.role === 'admin' && !profile.approved) {
@@ -248,7 +234,7 @@ export default function AuthPage() {
   };
 
   // If user is already logged in and has a session
-  if (userSession) {
+  if (userSession && !sessionChecked) {
     return (
       <div className="min-h-screen bg-white flex flex-col">
         <Navigation />
