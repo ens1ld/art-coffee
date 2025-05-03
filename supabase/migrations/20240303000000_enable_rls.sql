@@ -48,29 +48,29 @@ CREATE TRIGGER on_auth_user_created
 -- Create policies for the profiles table
 
 -- Everyone can see their own profile
+DROP POLICY IF EXISTS "Users can see their own profile" ON profiles;
 CREATE POLICY "Users can see their own profile"
-ON profiles
-FOR SELECT
-USING (auth.uid() = id);
+  ON profiles FOR SELECT
+  USING (auth.uid() = id);
 
 -- Users can update their own profile but not change role
+DROP POLICY IF EXISTS "Users can update their own profile except role" ON profiles;
 CREATE POLICY "Users can update their own profile except role"
-ON profiles
-FOR UPDATE
-USING (auth.uid() = id)
-WITH CHECK (auth.uid() = id AND role = (SELECT role FROM profiles WHERE id = auth.uid()));
+  ON profiles FOR UPDATE
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id AND role = (SELECT role FROM profiles WHERE id = auth.uid()));
 
 -- Admins can view all profiles
+DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
 CREATE POLICY "Admins can view all profiles"
-ON profiles
-FOR SELECT
-USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'superadmin')));
+  ON profiles FOR SELECT
+  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'superadmin')));
 
 -- Superadmins can update any profile including roles
+DROP POLICY IF EXISTS "Superadmins can update any profile" ON profiles;
 CREATE POLICY "Superadmins can update any profile"
-ON profiles
-FOR UPDATE
-USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'superadmin'));
+  ON profiles FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'superadmin'));
 
 -- Policies for the orders table
 
@@ -193,10 +193,4 @@ ON products
 FOR ALL
 USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'superadmin') AND approved = true));
 
--- Insert sample admin and superadmin accounts for testing
--- These are only added if they don't already exist
-INSERT INTO profiles (id, email, role, approved)
-VALUES 
-  ('00000000-0000-0000-0000-000000000001', 'admin@artcoffee.com', 'admin', true),
-  ('00000000-0000-0000-0000-000000000002', 'superadmin@artcoffee.com', 'superadmin', true)
-ON CONFLICT (id) DO NOTHING; 
+-- END OF FILE
