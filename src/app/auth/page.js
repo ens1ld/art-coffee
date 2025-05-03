@@ -323,6 +323,7 @@ function AuthContent() {
   if (user && !error && message) {
     return (
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
       <div className="min-h-screen flex flex-col">
         <main className="flex-grow flex items-center justify-center bg-amber-50">
           <div className="max-w-md w-full mx-auto p-8 bg-white rounded-lg shadow-md">
@@ -361,6 +362,8 @@ function AuthContent() {
               </div>
             )}
 =======
+=======
+>>>>>>> Stashed changes
       <div className="space-y-6">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-amber-900">You're signed in!</h2>
@@ -395,6 +398,9 @@ function AuthContent() {
             <pre className="whitespace-pre-wrap overflow-auto max-h-40">
               {JSON.stringify(debugInfo, null, 2)}
             </pre>
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
           </div>
         )}
@@ -403,6 +409,7 @@ function AuthContent() {
   }
 
   return (
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
     <div className="min-h-screen flex flex-col">
       <main className="flex-grow flex items-center justify-center bg-amber-50 p-4">
@@ -420,6 +427,8 @@ function AuthContent() {
               </p>
             </div>
 =======
+=======
+>>>>>>> Stashed changes
     <div>
       <h2 className="text-2xl font-bold text-center text-amber-900 mb-1">
         {!isSignUp ? 'Welcome Back' : 
@@ -429,6 +438,9 @@ function AuthContent() {
         {!isSignUp ? 'Sign in to your account' : 
          isAdminSignUp ? 'Admin accounts require approval' : 'Join Art Coffee today'}
       </p>
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
       {message && (

@@ -76,6 +76,7 @@ export default function HomePage() {
             </div>
             <div className="relative h-[400px] rounded-card overflow-hidden shadow-card">
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         <Image
                 src="/images/cards/1.png"
                 alt="Art Coffee Cup"
@@ -84,6 +85,8 @@ export default function HomePage() {
           priority
         />
 =======
+=======
+>>>>>>> Stashed changes
                 <Image
                   src="/images/hero-coffee.jpg"
                   alt="Art Coffee Cup"
@@ -91,6 +94,9 @@ export default function HomePage() {
                   className="object-cover"
                   priority
                 />
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             </div>
           </div>
@@ -223,9 +229,12 @@ export default function HomePage() {
             <div className="card h-full flex flex-col">
               <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
           <Image
                   src="/images/cards/3.png" 
 =======
+=======
+>>>>>>> Stashed changes
                 <Image
                   src="/images/bulk-order.jpg" 
 >>>>>>> Stashed changes
