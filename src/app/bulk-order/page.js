@@ -255,7 +255,7 @@ export default function BulkOrderPage() {
           <div className="mb-8 p-4 bg-error/10 border border-error rounded-lg">
             <h3 className="font-medium text-lg text-error mb-2">Error Processing Order</h3>
             <p className="text-text-secondary">
-              Please ensure you've selected at least one product and filled in all required business information fields (name, email, phone, and address).
+              Please ensure you&apos;ve selected at least one product and filled in all required business information fields (name, email, phone, and address).
             </p>
           </div>
         )}
