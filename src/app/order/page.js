@@ -151,7 +151,7 @@ export default function OrderPage() {
               description: 'Single shot of our signature espresso blend',
               price: 2.5,
               category: 'coffee',
-              image_url: '/images/espresso.jpg',
+              image_url: '/images/espresso.png',
               is_new: false,
               is_out_of_stock: false
             },
@@ -161,7 +161,7 @@ export default function OrderPage() {
               description: 'Espresso with steamed milk and foam',
               price: 3.8,
               category: 'coffee',
-              image_url: '/images/cappuccino.jpg',
+              image_url: '/images/7.png',
               is_new: true,
               is_out_of_stock: false
             },
@@ -171,7 +171,7 @@ export default function OrderPage() {
               description: 'Espresso with a lot of steamed milk and a little foam',
               price: 4.2,
               category: 'coffee',
-              image_url: '/images/latte.jpg',
+              image_url: '/images/8.png',
               is_new: false,
               is_out_of_stock: false
             },
