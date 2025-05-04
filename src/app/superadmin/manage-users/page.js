@@ -184,120 +184,12 @@ export default function SuperadminManageUsers() {
 
   // Handle user deletion
   const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      return;
-    }
-    
-    // Prevent deleting themselves
-    if (userId === profile.id) {
-      setErrorMessage("You cannot delete your own account.");
-      setTimeout(() => {
-        setErrorMessage('');
-      }, 3000);
-      return;
-    }
-    
-    try {
-      // Try multiple approaches in sequence until one works
-      let success = false;
-      let lastError = null;
-      
-      // Approach 1: Try setting is_deleted=true and other fields
-      try {
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            is_deleted: true,
-            deleted_at: new Date().toISOString(),
-            email: `deleted_${userId.substring(0, 8)}@deleted.user`,
-            role: 'deleted'
-          })
-          .eq('id', userId);
-        
-        if (!error) {
-          success = true;
-        } else {
-          lastError = error;
-          console.log('Approach 1 failed:', error.message);
-        }
-      } catch (err) {
-        console.log('Error in approach 1:', err);
-      }
-      
-      // Approach 2: If first attempt failed, try just updating role and email
-      if (!success) {
-        try {
-          const { error } = await supabase
-            .from('profiles')
-            .update({
-              email: `deleted_${userId.substring(0, 8)}@deleted.user`,
-              role: 'deleted'
-            })
-            .eq('id', userId);
-          
-          if (!error) {
-            success = true;
-          } else {
-            lastError = error;
-            console.log('Approach 2 failed:', error.message);
-          }
-        } catch (err) {
-          console.log('Error in approach 2:', err);
-        }
-      }
-      
-      // Approach 3: Try using RPC if available
-      if (!success) {
-        try {
-          // This is a fallback approach using a custom RPC function if it exists
-          const { error } = await supabase.rpc('mark_user_deleted', {
-            user_id: userId
-          });
-          
-          if (!error) {
-            success = true;
-          } else {
-            lastError = error;
-            console.log('Approach 3 failed:', error.message);
-          }
-        } catch (err) {
-          console.log('Error in approach 3:', err);
-        }
-      }
-      
-      if (!success && lastError) {
-        throw lastError;
-      }
-      
-      // If we got here, at least one approach succeeded
-      // Update local state
-      setUsers(users.filter(user => user.id !== userId));
-      
-      if (selectedUser && selectedUser.id === userId) {
-        setSelectedUser(null);
-      }
-      
-      setSuccessMessage('User deleted successfully');
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => {
-        setSuccessMessage('');
-      }, 3000);
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      setErrorMessage('Failed to delete user: ' + error.message);
-      
-      // Show a more detailed error message with guidance
-      if (error.message.includes('column "is_deleted" of relation "profiles" does not exist')) {
-        setErrorMessage('Failed to delete user: Database needs to be updated. Please run the SQL command shown on the superadmin dashboard first.');
-      } else if (error.message.includes('permission denied')) {
-        setErrorMessage('Failed to delete user: Permission denied. Your session may have expired. Please log out and log back in.');
-      }
-      
-      setTimeout(() => {
-        setErrorMessage('');
-      }, 5000);
-    }
+    // User deletion is disabled
+    setErrorMessage("User deletion is currently disabled.");
+    setTimeout(() => {
+      setErrorMessage('');
+    }, 3000);
+    return;
   };
 
   // Format date for display

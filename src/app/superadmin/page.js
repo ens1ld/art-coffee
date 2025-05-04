@@ -6,7 +6,6 @@ import { useProfile } from '@/components/ProfileFetcher';
 import { supabase } from '@/lib/supabaseClient';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import AddSoftDeleteFields from './add-soft-delete';
 
 export default function SuperadminDashboard() {
   const { profile, loading, error } = useProfile();
@@ -158,73 +157,6 @@ export default function SuperadminDashboard() {
       
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-amber-900 mb-6">Superadmin Dashboard</h1>
-        
-        {/* Database Maintenance Tools - show a simplified version */}
-        <div className="mb-6">
-          <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-medium text-amber-900">Database Maintenance</h2>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-400 text-amber-800 px-4 py-3 rounded relative mb-4">
-              <p className="font-medium mb-2">Please run this SQL in your Supabase SQL Editor:</p>
-              <pre className="bg-gray-800 text-white p-3 rounded text-sm overflow-auto">
-                {`ALTER TABLE profiles 
-ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;`}
-              </pre>
-              <p className="mt-2 text-sm">
-                <strong>Instructions:</strong>
-                <ol className="ml-4 mt-1 list-decimal">
-                  <li>Go to your Supabase project dashboard</li>
-                  <li>Click on &quot;SQL Editor&quot; in the left sidebar</li>
-                  <li>Create a new query</li>
-                  <li>Paste the SQL code above</li>
-                  <li>Click &quot;Run&quot; to execute it</li>
-                </ol>
-              </p>
-            </div>
-            
-            <p className="text-gray-600 mb-4">
-              After running this SQL command, the user deletion feature should work properly without errors.
-              This is needed only once per database.
-            </p>
-            
-            {/* Add button to create RPC function */}
-            <div className="mt-4">
-              <button
-                onClick={async () => {
-                  try {
-                    const response = await fetch('/api/create-rpc-function', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (result.success) {
-                      alert('Database helper function created successfully. User deletion should now work better.');
-                    } else {
-                      alert('Could not create the helper function automatically. Please run the SQL manually.');
-                    }
-                  } catch (error) {
-                    console.error('Error creating helper function:', error);
-                    alert('Error: ' + error.message);
-                  }
-                }}
-                className="px-4 py-2 border border-amber-800 text-amber-800 rounded-md hover:bg-amber-50 w-full"
-              >
-                Create Helper Function
-              </button>
-              <p className="text-xs text-gray-500 mt-1">
-                This will create a special function in the database to help with user deletion.
-                Only needs to be done once.
-              </p>
-            </div>
-          </div>
-        </div>
         
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
