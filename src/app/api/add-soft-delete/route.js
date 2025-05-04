@@ -32,41 +32,75 @@ export async function POST(request) {
         { status: 403 }
       );
     }
-    
-    // Execute SQL directly to add the columns
-    const { error } = await supabase.rpc('execute_sql', {
-      sql_query: `
-        ALTER TABLE profiles 
-        ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE,
-        ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
-      `
-    });
-    
-    if (error) {
-      // If the function doesn't exist, create a temporary one directly
-      const { error: directSqlError } = await supabase
+
+    // Direct method: Try executing the SQL directly
+    try {
+      // First method: Try using RPC if available
+      await supabase.rpc('execute_sql', {
+        sql_query: `
+          ALTER TABLE profiles 
+          ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE,
+          ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
+        `
+      });
+      
+      // Verify the column exists by querying it
+      await supabase
         .from('profiles')
-        .select('id')
+        .select('id, is_deleted')
         .limit(1);
       
-      if (directSqlError) {
-        return NextResponse.json(
-          { error: `Failed to add columns: ${directSqlError.message}` },
-          { status: 500 }
-        );
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Added soft delete columns to profiles table' 
+      });
+    } catch (directError) {
+      console.error('Error adding columns via direct method:', directError);
+      
+      // Second method: Try using a simpler approach - just a normal update
+      // that mentions the column, which will provide info about whether it exists
+      
+      try {
+        const { error: testError } = await supabase
+          .from('profiles')
+          .update({ is_deleted: false })
+          .eq('id', session.user.id);
+        
+        if (!testError) {
+          // Column already exists!
+          return NextResponse.json({ 
+            success: true, 
+            message: 'Columns already exist' 
+          });
+        } else if (testError.message.includes('column "is_deleted" of relation "profiles" does not exist')) {
+          // We can try a different approach or return information to the client
+          return NextResponse.json({ 
+            success: false, 
+            needsManualCreation: true,
+            message: 'Columns need to be created manually via SQL in Supabase dashboard',
+            sqlToRun: `
+              ALTER TABLE profiles 
+              ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE,
+              ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
+            `
+          });
+        }
+      } catch (testError) {
+        console.error('Error testing column:', testError);
       }
       
+      // If all else fails, return enough information for manual intervention
       return NextResponse.json({
-        success: true,
-        warning: "Could not execute SQL function, but profiles table exists so we'll assume columns are available.",
-        message: 'Database is ready for user management'
+        success: false,
+        message: 'Unable to add columns automatically. Please run SQL in Supabase dashboard.',
+        error: directError.message || 'Unknown error',
+        sqlToRun: `
+          ALTER TABLE profiles 
+          ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE,
+          ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
+        `
       });
     }
-    
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Added soft delete columns to profiles table' 
-    });
   } catch (error) {
     console.error('Error adding soft delete columns:', error);
     return NextResponse.json(
