@@ -124,6 +124,8 @@ const en = {
   description: 'Description',
   cancel: 'Cancel',
   confirm_selection: 'Confirm Selection',
+  no_items_found: 'No items found. Try a different search or category.',
+  remove: 'Remove',
   
   // Common UI elements  
   loading: 'Loading...',
@@ -154,6 +156,31 @@ const en = {
   all_rights_reserved: 'All rights reserved.',
   terms: 'Terms & Conditions',
   privacy: 'Privacy Policy',
+  
+  // Favorites
+  add_to_favorites: 'Add to Favorites',
+  remove_from_favorites: 'Remove from Favorites',
+  favorites: 'Favorites',
+  your_favorites: 'Your Favorites',
+  no_favorites: 'You don\'t have any favorites yet.',
+  item_added_to_favorites: 'Item added to favorites',
+  item_removed_from_favorites: 'Item removed from favorites',
+  sign_in_to_favorite: 'Please sign in to save favorites',
+  
+  // Profile tabs
+  profile_overview: 'Overview',
+  profile_favorites: 'Favorites',
+  profile_orders: 'Orders',
+  profile_settings: 'Settings',
+  
+  // Not authorized & pending approval pages
+  not_authorized_title: 'Not Authorized',
+  not_authorized_desc: 'You do not have permission to view this page.',
+  not_authorized_instruction: 'Please contact an administrator if you believe this is an error.',
+  go_back: 'Go Back to Home',
+  pending_approval_title: 'Pending Approval',
+  pending_approval_desc: 'Your admin account is pending approval.',
+  pending_approval_instruction: 'You will be notified via email once your account is approved.',
 };
 
 // Albanian translations
@@ -276,6 +303,8 @@ const sq = {
   description: 'Përshkrimi',
   cancel: 'Anulo',
   confirm_selection: 'Konfirmo Zgjedhjen',
+  no_items_found: 'Nuk u gjet asnjë artikull. Provoni një kërkim ose kategori tjetër.',
+  remove: 'Hiq',
   
   // Common UI elements
   loading: 'Duke u ngarkuar...',
@@ -306,6 +335,31 @@ const sq = {
   all_rights_reserved: 'Të gjitha të drejtat e rezervuara.',
   terms: 'Kushtet dhe Rregullat',
   privacy: 'Politika e Privatësisë',
+  
+  // Favorites
+  add_to_favorites: 'Shto te Të Preferuarat',
+  remove_from_favorites: 'Hiq nga Të Preferuarat',
+  favorites: 'Të Preferuarat',
+  your_favorites: 'Të Preferuarat Tuaja',
+  no_favorites: 'Ju nuk keni ende produkte të preferuara.',
+  item_added_to_favorites: 'Produkti u shtua te të preferuarat',
+  item_removed_from_favorites: 'Produkti u hoq nga të preferuarat',
+  sign_in_to_favorite: 'Ju lutem identifikohuni për të ruajtur të preferuarat',
+  
+  // Profile tabs
+  profile_overview: 'Përmbledhje',
+  profile_favorites: 'Të Preferuarat',
+  profile_orders: 'Porositë',
+  profile_settings: 'Cilësimet',
+  
+  // Not authorized & pending approval pages
+  not_authorized_title: 'Nuk Jeni i Autorizuar',
+  not_authorized_desc: 'Ju nuk keni akses për të parë këtë faqe.',
+  not_authorized_instruction: 'Ju lutemi kontaktoni administratorin nëse mendoni se kjo është një gabim.',
+  go_back: 'Kthehu tek Faqja Kryesore',
+  pending_approval_title: 'Në Pritje të Miratimit',
+  pending_approval_desc: 'Llogaria juaj e administratorit është në pritje të miratimit.',
+  pending_approval_instruction: 'Ju do të njoftoheni me email sapo llogaria juaj të miratohet.',
 };
 
 // Provider component

@@ -175,3 +175,54 @@ Translations are organized into categories:
 - **Order Page:** Order menu and cart
 - **Common UI:** Shared elements across the app
 - **Footer:** Footer links and content
+
+## Favorites Functionality
+
+The application now includes a favorites feature that allows users to save their preferred products. This feature requires a `favorites` table in the Supabase database.
+
+### Setting Up the Favorites Table
+
+Run the following SQL in your Supabase SQL Editor to create the favorites table and set up appropriate Row Level Security policies:
+
+```sql
+-- Create favorites table
+CREATE TABLE IF NOT EXISTS "public"."favorites" (
+    "id" UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    "user_id" UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    "product_id" UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    UNIQUE("user_id", "product_id")
+);
+
+-- Add RLS policies for favorites table
+ALTER TABLE "public"."favorites" ENABLE ROW LEVEL SECURITY;
+
+-- Allow users to select their own favorites
+CREATE POLICY "Users can view their own favorites" 
+ON "public"."favorites" 
+FOR SELECT 
+USING (auth.uid() = user_id);
+
+-- Allow users to insert their own favorites
+CREATE POLICY "Users can insert their own favorites" 
+ON "public"."favorites" 
+FOR INSERT 
+WITH CHECK (auth.uid() = user_id);
+
+-- Allow users to delete their own favorites
+CREATE POLICY "Users can delete their own favorites" 
+ON "public"."favorites" 
+FOR DELETE 
+USING (auth.uid() = user_id);
+
+-- Add indexes for better performance
+CREATE INDEX IF NOT EXISTS "favorites_user_id_idx" ON "public"."favorites" ("user_id");
+CREATE INDEX IF NOT EXISTS "favorites_product_id_idx" ON "public"."favorites" ("product_id");
+```
+
+### Using the Favorites Feature
+
+- Users can toggle product favorites by clicking the heart icon on any product card
+- Favorite products appear in the user's profile under the "Favorites" tab
+- The feature requires user authentication
+- Favorites are stored per user and persist between sessions

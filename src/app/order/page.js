@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { useLanguage } from '@/context/LanguageContext';
+import { toast } from 'react-hot-toast';
 
 // Menu categories with translations - defined inside component to access translations
 const CATEGORIES = [
@@ -19,7 +20,7 @@ const CATEGORIES = [
 ];
 
 export default function OrderPage() {
-  const { user, profile } = useProfile();
+  const { user, profile, favorites, setFavorites } = useProfile();
   const router = useRouter();
   const { translations } = useLanguage();
   
@@ -522,6 +523,83 @@ export default function OrderPage() {
     // You could add additional functionality here like showing a modal with product details
   };
 
+  // Fetch user favorites when user is logged in
+  useEffect(() => {
+    if (user) {
+      fetchUserFavorites();
+    }
+  }, [user]);
+
+  // Fetch user favorites from the database
+  const fetchUserFavorites = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('favorites')
+        .select('product_id')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error fetching favorites:', error);
+        return;
+      }
+
+      setFavorites(data.map(fav => fav.product_id));
+    } catch (err) {
+      console.error('Exception fetching favorites:', err);
+    }
+  };
+
+  // Toggle favorite status for a product
+  const toggleFavorite = async (e, productId) => {
+    e.stopPropagation();
+    
+    if (!user) {
+      toast.error(translations.sign_in_to_favorite || 'Please sign in to save favorites');
+      return;
+    }
+
+    try {
+      const isFavorited = favorites.includes(productId);
+      
+      if (isFavorited) {
+        // Remove from favorites
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('product_id', productId);
+
+        if (error) throw error;
+        
+        setFavorites(favorites.filter(id => id !== productId));
+        toast.success(translations.item_removed_from_favorites || 'Item removed from favorites');
+      } else {
+        // Add to favorites
+        const { error } = await supabase
+          .from('favorites')
+          .insert({
+            user_id: user.id,
+            product_id: productId
+          });
+
+        if (error) throw error;
+        
+        setFavorites([...favorites, productId]);
+        toast.success(translations.item_added_to_favorites || 'Item added to favorites');
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast.error(error.message || 'Failed to update favorites');
+    }
+  };
+
+  // Check if a product is in favorites
+  const isFavorite = (productId) => {
+    return favorites.includes(productId);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navigation />
@@ -540,7 +618,7 @@ export default function OrderPage() {
                   <div className="flex overflow-x-auto pb-2 space-x-2">
                     <button
                       onClick={() => handleCategoryChange('all')}
-                      className={`category-btn ${activeCategory === 'all' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}
+                      className={`px-3 py-2 rounded-lg font-medium text-sm transition-all duration-200 shadow-sm ${activeCategory === 'all' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-amber-100 hover:text-amber-800'}`}
                     >
                       {translations.all}
                     </button>
@@ -549,10 +627,10 @@ export default function OrderPage() {
                       <button
                         key={category.id}
                         onClick={() => handleCategoryChange(category.id)}
-                        className={`category-btn whitespace-nowrap ${activeCategory === category.id ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}
+                        className={`px-3 py-2 rounded-lg font-medium text-sm transition-all duration-200 shadow-sm whitespace-nowrap ${activeCategory === category.id ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-amber-100 hover:text-amber-800'}`}
                       >
                         <span className="mr-1">{category.icon}</span>
-                        {category.name}
+                        {translations[`category_${category.id}`] || category.name}
                       </button>
                     ))}
                   </div>
@@ -602,7 +680,7 @@ export default function OrderPage() {
                 </div>
               ) : filteredItems.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-gray-500">No items found. Try a different search or category.</p>
+                  <p className="text-gray-500">{translations.no_items_found || 'No items found. Try a different search or category.'}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -632,6 +710,22 @@ export default function OrderPage() {
                             {translations.new}
                           </div>
                         )}
+                        
+                        {/* Favorite button */}
+                        <button 
+                          onClick={(e) => toggleFavorite(e, item.id)}
+                          className="absolute top-2 left-2 bg-white rounded-full p-1.5 shadow-sm hover:shadow transition-all"
+                        >
+                          {isFavorite(item.id) ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                            </svg>
+                          )}
+                        </button>
                       </div>
                       
                       <div className="p-4">
@@ -644,8 +738,11 @@ export default function OrderPage() {
                               e.stopPropagation();
                               addToCart(item);
                             }}
-                            className="bg-amber-800 text-white px-3 py-1 rounded-md text-sm hover:bg-amber-700 transition-colors"
+                            className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 transition-all duration-200 shadow-sm flex items-center"
                           >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
                             {translations.add_to_cart}
                           </button>
                         </div>
@@ -699,20 +796,24 @@ export default function OrderPage() {
                     {cart.map((item) => (
                       <div key={item.id} className="flex justify-between items-center">
                         <div className="flex items-center">
-                          <div className="flex border border-gray-200 rounded-md">
+                          <div className="flex border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                             <button
                               onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
-                              className="px-2 py-1 text-gray-500 hover:text-gray-700"
+                              className="w-8 h-8 flex items-center justify-center text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-1 focus:ring-amber-500"
                               disabled={item.quantity <= 1}
                             >
-                              -
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                              </svg>
                             </button>
-                            <span className="px-2 py-1 text-gray-700">{item.quantity}</span>
+                            <span className="w-10 text-center flex items-center justify-center font-medium">{item.quantity}</span>
                             <button
                               onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
-                              className="px-2 py-1 text-gray-500 hover:text-gray-700"
+                              className="w-8 h-8 flex items-center justify-center text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-1 focus:ring-amber-500"
                             >
-                              +
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                              </svg>
                             </button>
                           </div>
                           <div className="ml-3">
@@ -726,7 +827,7 @@ export default function OrderPage() {
                             onClick={() => removeFromCart(item.id)}
                             className="text-red-500 hover:text-red-700 text-sm"
                           >
-                            Remove
+                            {translations.remove || 'Remove'}
                           </button>
                         </div>
                       </div>
@@ -772,11 +873,11 @@ export default function OrderPage() {
                   {/* Place Order Button */}
                   <button
                     onClick={placeOrder}
-                    disabled={isSubmitting || cart.length === 0}
-                    className={`w-full py-3 rounded-md font-medium text-white ${
-                      isSubmitting || cart.length === 0
+                    disabled={isSubmitting || cart.length === 0 || !tableNumber}
+                    className={`w-full py-3 rounded-lg font-medium text-white shadow-md transition-all duration-200 ${
+                      isSubmitting || cart.length === 0 || !tableNumber
                         ? 'bg-gray-400 cursor-not-allowed'
-                        : 'bg-amber-800 hover:bg-amber-700'
+                        : 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800'
                     } mt-6`}
                   >
                     {isSubmitting 
@@ -787,7 +888,9 @@ export default function OrderPage() {
                           </svg>
                           {translations.processing}
                         </span>
-                      : translations.place_order
+                      : !tableNumber
+                        ? translations.please_select_table
+                        : translations.place_order
                     }
                   </button>
                 </div>
@@ -836,15 +939,15 @@ export default function OrderPage() {
               <div className="mt-6 flex justify-end space-x-3">
                 <button 
                   onClick={() => setShowTableSelector(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors shadow-sm font-medium"
                 >
                   {translations.cancel}
                 </button>
                 <button 
                   onClick={() => handleSelectTable(selectedTable)}
                   disabled={!selectedTable}
-                  className={`px-4 py-2 rounded-md text-white ${
-                    !selectedTable ? 'bg-gray-400 cursor-not-allowed' : 'bg-amber-800 hover:bg-amber-700'
+                  className={`px-4 py-2 rounded-lg text-white shadow-sm font-medium transition-all duration-200 ${
+                    !selectedTable ? 'bg-gray-400 cursor-not-allowed' : 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800'
                   }`}
                 >
                   {translations.confirm_selection}
@@ -875,7 +978,7 @@ export default function OrderPage() {
                   setCart([]);
                   setOrderNote('');
                 }}
-                className="px-6 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700"
+                className="px-6 py-2 bg-amber-600 text-white rounded-lg shadow-md hover:bg-amber-700 transition-all duration-200 font-medium"
               >
                 OK
               </button>

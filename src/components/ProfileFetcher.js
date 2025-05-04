@@ -12,7 +12,9 @@ const ProfileContext = createContext({
   refreshProfile: () => Promise.resolve(),
   isAdmin: false,
   isSuperadmin: false,
-  signOut: () => Promise.resolve()
+  signOut: () => Promise.resolve(),
+  favorites: [],
+  setFavorites: () => {}
 });
 
 // Hook to use the profile context
@@ -72,6 +74,7 @@ export function ProfileFetcher({ children }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
+  const [favorites, setFavorites] = useState([]);
   const mountedRef = useRef(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -416,7 +419,9 @@ export function ProfileFetcher({ children }) {
     refreshProfile,
     isAdmin: profile ? isAdmin(profile.role) : false,
     isSuperadmin: profile ? isSuperadmin(profile.role) : false,
-    signOut
+    signOut,
+    favorites,
+    setFavorites
   };
 
   return (
