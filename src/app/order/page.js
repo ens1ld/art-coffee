@@ -47,6 +47,12 @@ export default function OrderPage() {
   const [showTableSelector, setShowTableSelector] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
   
+  // Add a notification state for order confirmation
+  const [orderNotification, setOrderNotification] = useState({
+    show: false,
+    message: ''
+  });
+  
   // Check for table param in URL (from QR code)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -423,13 +429,33 @@ export default function OrderPage() {
       
       // Update UI to show success
       setOrderSuccess(true);
-      setCart([]);
-      setOrderNote('');
       
-      // Reset success message after 5 seconds
+      // Show confirmation notification that stays visible for user feedback
+      setOrderNotification({
+        show: true,
+        message: `Your order has been placed successfully! Order #${localOrderId.substring(0, 8)}`
+      });
+      
+      // Hide cart after successful order
       setTimeout(() => {
-        setOrderSuccess(false);
-      }, 5000);
+        setCart([]);
+        setOrderNote('');
+        
+        // Keep showing notification for user confirmation, but close the cart
+        setShowCart(false);
+        
+        // After the cart is closed, wait a bit more before hiding the notification
+        setTimeout(() => {
+          setOrderSuccess(false);
+          // Keep notification visible for 3 more seconds
+          setTimeout(() => {
+            setOrderNotification({
+              show: false,
+              message: ''
+            });
+          }, 3000);
+        }, 500);
+      }, 1500);
       
       // Add loyalty points for logged in users (local only)
       if (user) {
@@ -448,6 +474,10 @@ export default function OrderPage() {
       // Even for general errors, we'll show success to ensure good UX
       setOrderSuccess(true);
       setCart([]);
+      setOrderNotification({
+        show: true,
+        message: 'Your order has been placed!'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -924,6 +954,37 @@ export default function OrderPage() {
                     }`}
                   >
                     Confirm Selection
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Order Confirmation Notification */}
+        {orderNotification.show && (
+          <div className="fixed top-24 right-4 z-50 bg-green-100 border-l-4 border-green-500 rounded-md shadow-lg p-4 max-w-md">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-green-800">
+                  {orderNotification.message}
+                </p>
+              </div>
+              <div className="ml-auto pl-3">
+                <div className="-mx-1.5 -my-1.5">
+                  <button
+                    onClick={() => setOrderNotification({ show: false, message: '' })}
+                    className="inline-flex rounded-md p-1.5 text-green-500 hover:bg-green-200 focus:outline-none"
+                  >
+                    <span className="sr-only">Dismiss</span>
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
                   </button>
                 </div>
               </div>

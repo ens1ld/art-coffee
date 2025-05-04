@@ -647,7 +647,14 @@ export default function ProfilePage() {
                     My Profile
                   </Link>
                   <Link 
-                    href="/order" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const ordersSection = document.querySelector('[data-section="orders"]');
+                      if (ordersSection) {
+                        ordersSection.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                    href="#"
                     className="block w-full py-2 text-center rounded-md border border-amber-800 text-amber-800 hover:bg-amber-50"
                   >
                     My Orders
@@ -715,6 +722,135 @@ export default function ProfilePage() {
                       : 'Unknown'}
                   </p>
                 </div>
+              </div>
+              
+              {/* My Orders Section */}
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6" data-section="orders">
+                <h2 className="text-xl font-bold text-amber-900 mb-4">My Orders</h2>
+                
+                {(() => {
+                  // Try to get orders from localStorage first
+                  let localOrders = [];
+                  if (typeof window !== 'undefined') {
+                    try {
+                      localOrders = JSON.parse(localStorage.getItem('art_coffee_orders') || '[]');
+                    } catch (e) {
+                      console.error('Error parsing local orders:', e);
+                    }
+                  }
+                  
+                  if (localOrders.length > 0) {
+                    return (
+                      <div className="space-y-4">
+                        {localOrders.map((order, index) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex justify-between items-center mb-2">
+                              <div>
+                                <span className="font-medium text-amber-900">
+                                  Order #{order.id.substring(0, 8)}
+                                </span>
+                                <p className="text-sm text-gray-500">
+                                  {new Date(order.date).toLocaleDateString()} at {new Date(order.date).toLocaleTimeString()}
+                                </p>
+                              </div>
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Completed
+                              </span>
+                            </div>
+                            
+                            <div className="mt-2">
+                              <h4 className="text-sm font-medium text-gray-700 mb-1">Items:</h4>
+                              <ul className="text-sm text-gray-600 space-y-1">
+                                {order.items.map((item, itemIndex) => (
+                                  <li key={itemIndex} className="flex justify-between">
+                                    <span>{item.quantity}x {item.name}</span>
+                                    <span>€{item.total.toFixed(2)}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            
+                            <div className="mt-3 flex justify-between border-t border-gray-100 pt-2">
+                              <span className="text-gray-600">Total:</span>
+                              <span className="font-bold text-amber-900">€{order.total.toFixed(2)}</span>
+                            </div>
+                            
+                            {order.notes && (
+                              <div className="mt-2 text-sm text-gray-600">
+                                <span className="font-medium">Notes:</span> {order.notes}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  } else if (orders.length > 0) {
+                    return (
+                      <div className="space-y-4">
+                        {orders.map((order) => (
+                          <div key={order.id} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex justify-between items-center mb-2">
+                              <div>
+                                <span className="font-medium text-amber-900">
+                                  Order #{order.id.toString().substring(0, 8)}
+                                </span>
+                                <p className="text-sm text-gray-500">
+                                  {new Date(order.created_at).toLocaleDateString()} at {new Date(order.created_at).toLocaleTimeString()}
+                                </p>
+                              </div>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              </span>
+                            </div>
+                            
+                            <div className="mt-2">
+                              <h4 className="text-sm font-medium text-gray-700 mb-1">Items:</h4>
+                              <ul className="text-sm text-gray-600 space-y-1">
+                                {order.order_items && order.order_items.length > 0 ? (
+                                  order.order_items.map((item, index) => (
+                                    <li key={index} className="flex justify-between">
+                                      <span>{item.quantity}x {item.product_name}</span>
+                                      <span>€{(item.price * item.quantity).toFixed(2)}</span>
+                                    </li>
+                                  ))
+                                ) : (
+                                  <li className="italic text-gray-500">No items found</li>
+                                )}
+                              </ul>
+                            </div>
+                            
+                            <div className="mt-3 flex justify-between border-t border-gray-100 pt-2">
+                              <span className="text-gray-600">Total:</span>
+                              <span className="font-bold text-amber-900">€{order.total.toFixed(2)}</span>
+                            </div>
+                            
+                            {order.notes && (
+                              <div className="mt-2 text-sm text-gray-600">
+                                <span className="font-medium">Notes:</span> {order.notes}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500 mb-4">You haven't placed any orders yet.</p>
+                        <Link 
+                          href="/order" 
+                          className="inline-block px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700"
+                        >
+                          Browse Menu
+                        </Link>
+                      </div>
+                    );
+                  }
+                })()}
               </div>
               
               {/* Access Information */}
