@@ -130,9 +130,11 @@ export default function AdminMenu() {
   useEffect(() => {
     let result = [...menuItems];
 
-    // Apply category filter
+    // Apply category filter - case insensitive
     if (categoryFilter !== 'all') {
-      result = result.filter(item => item.category === categoryFilter);
+      result = result.filter(item => 
+        item.category && item.category.toLowerCase() === categoryFilter.toLowerCase()
+      );
     }
 
     // Apply search filter

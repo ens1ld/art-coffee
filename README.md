@@ -32,7 +32,7 @@ For testing purposes, the following accounts are available:
 
 1. Start the development server:
    ```
-   npm run dev
+npm run dev
    ```
 
 2. Access the application at http://localhost:3000

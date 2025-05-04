@@ -266,9 +266,11 @@ export default function OrderPage() {
   const filterMenuItems = (items, category, query) => {
     let filtered = items;
     
-    // Apply category filter
+    // Apply category filter - case insensitive
     if (category !== 'all') {
-      filtered = filtered.filter(item => item.category === category);
+      filtered = filtered.filter(item => 
+        item.category && item.category.toLowerCase() === category.toLowerCase()
+      );
     }
     
     // Apply search filter
@@ -396,7 +398,7 @@ export default function OrderPage() {
         .from('orders')
         .insert([orderData])
         .select();
-        
+      
       if (orderError) throw orderError;
       
       // Add order items
@@ -404,13 +406,13 @@ export default function OrderPage() {
         const orderItemsWithOrderId = orderItems.map(item => ({
           ...item,
           order_id: order[0].id
-        }));
-        
-        const { error: itemsError } = await supabase
-          .from('order_items')
+      }));
+      
+      const { error: itemsError } = await supabase
+        .from('order_items')
           .insert(orderItemsWithOrderId);
-          
-        if (itemsError) throw itemsError;
+      
+      if (itemsError) throw itemsError;
       }
       
       // Add loyalty points if user is logged in
@@ -487,11 +489,11 @@ export default function OrderPage() {
     recordProductView(item.id);
     // You could add additional functionality here like showing a modal with product details
   };
-  
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navigation />
-      
+
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <div>
@@ -502,24 +504,24 @@ export default function OrderPage() {
           {scannedTable && (
             <div className="mt-2 md:mt-0 bg-amber-100 rounded-lg px-4 py-2">
               <span className="font-medium text-amber-800">Table #{scannedTable}</span>
-            </div>
-          )}
-          
-          <button
+          </div>
+        )}
+
+                  <button 
             onClick={() => setShowCart(true)}
             className="mt-4 md:mt-0 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium bg-amber-800 text-white hover:bg-amber-700"
-          >
+                  >
             <span className="mr-2">{cart.length}</span>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3z" />
             </svg>
-          </button>
-        </div>
-        
+                  </button>
+                </div>
+                
         {/* Category Navigation */}
         <div className="bg-white shadow rounded-lg p-2 mb-6 overflow-x-auto">
           <div className="flex space-x-2">
-            <button
+                        <button
               className={`px-4 py-2 rounded-md text-sm font-medium ${
                 activeCategory === 'all'
                   ? 'bg-amber-800 text-white'
@@ -528,10 +530,10 @@ export default function OrderPage() {
               onClick={() => handleCategoryChange('all')}
             >
               All
-            </button>
+                        </button>
             
             {CATEGORIES.map((category) => (
-              <button
+                        <button
                 key={category.id}
                 className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
                   activeCategory === category.id
@@ -542,11 +544,11 @@ export default function OrderPage() {
               >
                 <span className="mr-2">{category.icon}</span>
                 {category.name}
-              </button>
-            ))}
-          </div>
-        </div>
-        
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
         {/* Search Bar */}
         <div className="bg-white shadow rounded-lg p-4 mb-6">
           <input
@@ -556,8 +558,8 @@ export default function OrderPage() {
             value={searchQuery}
             onChange={handleSearch}
           />
-        </div>
-        
+                  </div>
+                  
         {/* Menu Items */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {isLoading ? (
@@ -611,22 +613,22 @@ export default function OrderPage() {
                   
                   <div className="flex items-center justify-between mt-4">
                     <span className="text-lg font-bold text-amber-900">€{item.price.toFixed(2)}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
                         addToCart(item);
-                      }}
+                          }}
                       className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-800 hover:bg-amber-700"
-                    >
+                        >
                       Add to Cart
-                    </button>
-                  </div>
+            </button>
+          </div>
                 </div>
               </div>
             ))
-          )}
-        </div>
-        
+            )}
+          </div>
+          
         {/* Cart Sidebar */}
         {showCart && (
           <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-40 flex justify-end">
@@ -644,20 +646,20 @@ export default function OrderPage() {
               </div>
               
               <div className="flex-grow overflow-y-auto p-4">
-                {cart.length === 0 ? (
+              {cart.length === 0 ? (
                   <div className="text-center py-12">
                     <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     <p className="mt-4 text-gray-500">Your cart is empty</p>
-                    <button
+                  <button
                       onClick={() => setShowCart(false)}
                       className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-800 hover:bg-amber-700"
-                    >
+                  >
                       Browse Menu
-                    </button>
-                  </div>
-                ) : (
+                  </button>
+                </div>
+              ) : (
                   <div className="space-y-4">
                     {cart.map((item) => (
                       <div key={item.id} className="flex border-b border-gray-200 pb-4">
@@ -673,9 +675,9 @@ export default function OrderPage() {
                               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                               </svg>
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                            )}
+                          </div>
                         
                         <div className="ml-4 flex-grow">
                           <h4 className="text-sm font-medium text-amber-900">{item.name}</h4>
@@ -709,8 +711,8 @@ export default function OrderPage() {
                             </svg>
                           </button>
                         </div>
-                      </div>
-                    ))}
+          </div>
+        ))}
                     
                     {/* Table Number Input */}
                     {!scannedTable && (
@@ -750,7 +752,7 @@ export default function OrderPage() {
                             Select Table
                           </button>
                         )}
-                      </div>
+      </div>
                     )}
                     
                     {/* Order Note */}
@@ -795,10 +797,10 @@ export default function OrderPage() {
                   {orderSuccess && (
                     <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
                       Order placed successfully! You will be notified when your order is ready.
-                    </div>
-                  )}
-                  
-                  <button
+                      </div>
+                    )}
+                    
+                      <button 
                     onClick={placeOrder}
                     disabled={isSubmitting || cart.length === 0}
                     className={`mt-4 w-full py-3 px-4 rounded-md shadow-sm text-white font-medium ${
@@ -836,7 +838,7 @@ export default function OrderPage() {
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                </button>
+                      </button>
               </div>
               
               <div className="p-4 flex-grow overflow-y-auto">
@@ -917,7 +919,7 @@ export default function OrderPage() {
           </div>
         )}
       </main>
-      
+
       <Footer />
     </div>
   );

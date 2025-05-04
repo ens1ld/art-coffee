@@ -499,10 +499,10 @@ export default function ProfilePage() {
       
       // Update local state
       setFavorites(favorites.filter(item => item.id !== favoriteId));
-      setUpdateStatus({
-        message: 'Item removed from favorites',
-        type: 'success'
-      });
+    setUpdateStatus({
+      message: 'Item removed from favorites',
+      type: 'success'
+    });
       
       // Clear status message after 3 seconds
       setTimeout(() => {
@@ -560,14 +560,14 @@ export default function ProfilePage() {
 
   // If still loading, show a loading spinner
   if (loading || !mounted) {
-    return (
+        return (
       <div className="min-h-screen bg-white flex flex-col">
         <Navigation />
         <div className="flex-grow flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-800"></div>
-        </div>
+                  </div>
         <Footer />
-      </div>
+                  </div>
     );
   }
 
@@ -587,10 +587,10 @@ export default function ProfilePage() {
             >
               Retry
             </button>
-          </div>
-        </div>
+                  </div>
+                </div>
         <Footer />
-      </div>
+              </div>
     );
   }
 
@@ -606,10 +606,10 @@ export default function ProfilePage() {
             <Link href="/login" className="btn-primary">
               Go to Login
             </Link>
-          </div>
-        </div>
+                    </div>
+                  </div>
         <Footer />
-      </div>
+                </div>
     );
   }
 
@@ -677,7 +677,7 @@ export default function ProfilePage() {
                     className="block w-full py-2 text-center rounded-md border border-red-500 text-red-500 hover:bg-red-50"
                   >
                     Sign Out
-                  </button>
+                      </button>
                 </div>
               </div>
             </div>
@@ -705,7 +705,7 @@ export default function ProfilePage() {
                       Your admin account is pending approval. You will be notified when it&apos;s approved.
                     </p>
                   )}
-                </div>
+          </div>
                 
                 <div className="mb-4">
                   <p className="text-gray-600 mb-1">Member Since</p>
@@ -732,8 +732,8 @@ export default function ProfilePage() {
                       <li>Participate in our loyalty program</li>
                       <li>View your order history</li>
                     </ul>
-                  </div>
-                )}
+              </div>
+            )}
                 
                 {profileData.role === 'admin' && (
                   <div className="mb-4">
@@ -748,7 +748,7 @@ export default function ProfilePage() {
                       <li>View loyalty program analytics</li>
                       <li>Access the admin dashboard</li>
                     </ul>
-                  </div>
+          </div>
                 )}
                 
                 {profileData.role === 'superadmin' && (
@@ -763,9 +763,9 @@ export default function ProfilePage() {
                       <li>View all admin and customer data</li>
                       <li>Complete access to the admin dashboard</li>
                     </ul>
-                  </div>
-                )}
-                
+              </div>
+            )}
+            
                 {profileData.role === 'user' && (
                   <div className="mt-4 p-4 bg-amber-50 rounded-md">
                     <p className="text-amber-800 font-medium mb-2">
@@ -795,7 +795,7 @@ export default function ProfilePage() {
                     >
                       View All Products
                     </Link>
-                  </div>
+            </div>
                   
                   <p className="text-gray-600 mb-4">
                     Based on your order history and browsing habits, we think you might like:
@@ -850,14 +850,14 @@ export default function ProfilePage() {
                       <span className="font-medium">Pro tip:</span> We update these recommendations based on your ordering habits and preferences to help you discover new favorites.
                     </p>
                   </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            </main>
+            
+            <Footer />
           </div>
-        </div>
-      </main>
-      
-      <Footer />
-    </div>
   );
 }
