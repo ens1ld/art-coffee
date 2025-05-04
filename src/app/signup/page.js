@@ -195,6 +195,10 @@ export default function SignupPage() {
         } else {
           // Check if email verification is required
           if (authData.user.identities?.length === 0 || authData.session === null) {
+            // Save email to localStorage for confirmation page
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('signupEmail', formData.email);
+            }
             router.push('/signup/confirmation');
           } else {
             // If no email confirmation needed, redirect to order page

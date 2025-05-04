@@ -218,7 +218,7 @@ export function ProfileFetcher({ children }) {
           return;
         }
         
-        // Set user state
+        // Set user state immediately
         if (mountedRef.current) {
           setUser(currentSession.user);
         }
@@ -256,50 +256,62 @@ export function ProfileFetcher({ children }) {
     // Initial load
     loadUserAndProfile();
     
-    // Set up auth listener
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session ? 'has session' : 'no session');
+    // Set up auth change listener with improved handling
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      console.log('Auth state change:', event, newSession ? 'Session exists' : 'No session');
       
-      // Set the session immediately to ensure components have access to it
-      setSession(session);
-      sessionRef.current = session;
-      
-      // For sign-in and sign-out events, update UI immediately
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        setUser(session?.user || null);
-        
-        // Immediately update profile state on sign-out
-        if (event === 'SIGNED_OUT') {
-          setProfile(null);
-          return;
-        }
-        
-        // Special case for SIGNED_IN - fetch profile immediately
-        if (event === 'SIGNED_IN' && session?.user) {
+      // Force immediate UI update for all auth events
+      if (newSession?.user) {
+        // Update user state immediately for better responsiveness
+        setUser(newSession.user);
+        // Only set loading true for events that need profile refresh
+        if (['SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED'].includes(event)) {
           setLoading(true);
-          try {
-            const result = await fetchProfileData(session);
-            if (mountedRef.current) {
-              if (result.error) {
-                setError(result.error);
-              } else if (result.profile) {
-                setProfile(result.profile);
-                setError(null);
-              }
-            }
-          } catch (e) {
-            console.error('Error fetching profile:', e);
-          } finally {
-            if (mountedRef.current) {
-              setLoading(false);
-            }
-          }
         }
+      } else if (event === 'SIGNED_OUT') {
+        // Clear all auth state immediately on sign out
+        setUser(null);
+        setProfile(null);
+        setSession(null);
+        sessionRef.current = null;
+        
+        // Clear local storage cache
+        try {
+          localStorage.removeItem('art-coffee-profile-cache');
+        } catch (e) {
+          console.warn('Failed to clear profile cache:', e);
+        }
+        
+        setLoading(false);
+        return;
       }
       
-      // For other events, refresh the auth state to ensure sync
-      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        loadUserAndProfile();
+      // Update session reference
+      setSession(newSession);
+      sessionRef.current = newSession;
+      
+      // For sign-in event or session changes, always fetch fresh profile
+      if (newSession?.user && ['SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED'].includes(event)) {
+        try {
+          const result = await fetchProfileData(newSession);
+          if (mountedRef.current) {
+            if (result.error) {
+              setError(result.error);
+            } else if (result.profile) {
+              setProfile(result.profile);
+              setError(null);
+            }
+          }
+        } catch (e) {
+          console.error('Error fetching profile on auth change:', e);
+          if (mountedRef.current) {
+            setError(e?.message || 'Failed to fetch profile after authentication change');
+          }
+        } finally {
+          if (mountedRef.current) {
+            setLoading(false);
+          }
+        }
       }
     });
     

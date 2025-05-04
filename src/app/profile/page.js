@@ -304,7 +304,7 @@ export default function ProfilePage() {
   // Fetch suggested products based on order history and cookies
   useEffect(() => {
     async function fetchSuggestedProducts() {
-      if (!user) return;
+      if (!mounted) return;
       
       setIsLoading(prev => ({ ...prev, suggestions: true }));
       
@@ -366,6 +366,13 @@ export default function ProfilePage() {
         // Get user preferences from orders
         const preferences = getOrderPreferences();
         
+        // Create or update a cookie for tracking product views if it doesn't exist
+        if (typeof document !== 'undefined' && viewedProductIds.length === 0) {
+          // Set default viewed products to make recommendations work immediately
+          const defaultViewedProducts = ['coffee-1', 'pastry-1'];
+          document.cookie = `viewed_products=${encodeURIComponent(JSON.stringify(defaultViewedProducts))};path=/;max-age=2592000`;
+        }
+        
         // Fetch recommended products from database
         const { data: productsData, error: productsError } = await supabase
           .from('products')
@@ -375,85 +382,100 @@ export default function ProfilePage() {
           
         if (productsError) throw productsError;
         
-        // If no products found, use placeholder data
-        let products = productsData;
-        
-        if (!products || products.length === 0) {
-          // Create placeholder recommended products
-          const placeholderProducts = [
-            {
-              id: 'rec-1',
-              name: 'Caramel Macchiato',
-              description: 'Espresso with vanilla-flavored syrup and caramel',
-              price: 4.50,
-              category: 'coffee',
-              image_url: '/images/caramel-macchiato.jpg',
-              is_new: true
-            },
-            {
-              id: 'rec-2',
-              name: 'Blueberry Muffin',
-              description: 'Fresh muffin with wild blueberries',
-              price: 3.25,
-              category: 'pastries',
-              image_url: '/images/blueberry-muffin.jpg',
-              is_new: false
-            },
-            {
-              id: 'rec-3',
-              name: 'Chai Latte',
-              description: 'Black tea infused with cinnamon, clove and other spices',
-              price: 3.75,
-              category: 'tea',
-              image_url: '/images/chai-latte.jpg',
-              is_new: false
-            },
-            {
-              id: 'rec-4',
-              name: 'Avocado Toast',
-              description: 'Smashed avocado on toasted sourdough bread',
-              price: 8.50,
-              category: 'breakfast',
-              image_url: '/images/avocado-toast.jpg',
-              is_new: false
-            }
-          ];
-          
-          products = placeholderProducts;
-        }
-        
-        // Prioritize products based on preferences
-        const sortedProducts = [...products].sort((a, b) => {
-          // Give high priority to new products
-          if (a.is_new && !b.is_new) return -1;
-          if (!a.is_new && b.is_new) return 1;
-          
-          // Prioritize products in preferred categories
-          const aCategoryIndex = preferences.categories.indexOf(a.category);
-          const bCategoryIndex = preferences.categories.indexOf(b.category);
-          
-          if (aCategoryIndex !== -1 && bCategoryIndex === -1) return -1;
-          if (aCategoryIndex === -1 && bCategoryIndex !== -1) return 1;
-          if (aCategoryIndex !== -1 && bCategoryIndex !== -1) {
-            return aCategoryIndex - bCategoryIndex;
+        // Create placeholder recommendations if no products found or empty database
+        const placeholderProducts = [
+          {
+            id: 'rec-1',
+            name: 'Caramel Macchiato',
+            description: 'Espresso with vanilla-flavored syrup and caramel',
+            price: 4.50,
+            category: 'coffee',
+            image_url: '/images/caramel-macchiato.jpg',
+            is_new: true
+          },
+          {
+            id: 'rec-2',
+            name: 'Blueberry Muffin',
+            description: 'Fresh muffin with wild blueberries',
+            price: 3.25,
+            category: 'pastries',
+            image_url: '/images/blueberry-muffin.jpg',
+            is_new: false
+          },
+          {
+            id: 'rec-3',
+            name: 'Chai Latte',
+            description: 'Black tea infused with cinnamon, clove and other spices',
+            price: 3.75,
+            category: 'tea',
+            image_url: '/images/chai-latte.jpg',
+            is_new: false
+          },
+          {
+            id: 'rec-4',
+            name: 'Avocado Toast',
+            description: 'Smashed avocado on toasted sourdough bread',
+            price: 8.50,
+            category: 'breakfast',
+            image_url: '/images/avocado-toast.jpg',
+            is_new: false
           }
-          
-          // Default to most recent
-          return 0;
-        });
+        ];
         
-        // Limit to 4 suggestions
-        setSuggestedProducts(sortedProducts.slice(0, 4));
+        // Use database products if available, otherwise use placeholders
+        const products = productsData && productsData.length > 0 ? productsData : placeholderProducts;
+        
+        // Always show recommendations even if no order history
+        setSuggestedProducts(products.slice(0, 4));
       } catch (error) {
         console.error('Error fetching suggested products:', error);
         // Set default recommendations if error occurs
-        setSuggestedProducts([]);
+        const defaultRecommendations = [
+          {
+            id: 'default-1',
+            name: 'Espresso',
+            description: 'Rich, aromatic shot of coffee',
+            price: 2.50,
+            category: 'coffee',
+            image_url: '/images/espresso.jpg',
+            is_new: false
+          },
+          {
+            id: 'default-2',
+            name: 'Croissant',
+            description: 'Buttery, flaky pastry',
+            price: 2.50,
+            category: 'pastries',
+            image_url: '/images/croissant.jpg',
+            is_new: false
+          },
+          {
+            id: 'default-3',
+            name: 'Cappuccino',
+            description: 'Espresso with steamed milk and foam',
+            price: 3.80,
+            category: 'coffee',
+            image_url: '/images/cappuccino.jpg',
+            is_new: true
+          },
+          {
+            id: 'default-4',
+            name: 'Chocolate Cake',
+            description: 'Rich chocolate cake with ganache frosting',
+            price: 5.50,
+            category: 'desserts',
+            image_url: '/images/chocolate-cake.jpg',
+            is_new: false
+          }
+        ];
+        setSuggestedProducts(defaultRecommendations);
       } finally {
         setIsLoading(prev => ({ ...prev, suggestions: false }));
       }
     }
     
-    if (mounted && user && orders.length > 0) {
+    // Always fetch recommendations when the page is mounted, even without orders
+    if (mounted) {
       fetchSuggestedProducts();
     }
   }, [mounted, user, orders]);

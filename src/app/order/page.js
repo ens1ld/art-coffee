@@ -312,6 +312,36 @@ export default function OrderPage() {
       setCart([...cart, { ...item, quantity: 1 }]);
     }
     
+    // Record this product view/selection in cookies for recommendations
+    if (typeof document !== 'undefined') {
+      try {
+        // Get existing viewed products from cookies
+        const cookies = document.cookie.split(';');
+        const viewedProductsCookie = cookies.find(cookie => cookie.trim().startsWith('viewed_products='));
+        
+        let viewedProducts = [];
+        if (viewedProductsCookie) {
+          viewedProducts = JSON.parse(decodeURIComponent(viewedProductsCookie.split('=')[1]));
+        }
+        
+        // Add current product if not already in list
+        if (!viewedProducts.includes(item.id)) {
+          viewedProducts.unshift(item.id); // Add to front of array
+          
+          // Limit to last 10 viewed products
+          if (viewedProducts.length > 10) {
+            viewedProducts = viewedProducts.slice(0, 10);
+          }
+          
+          // Save back to cookie with 30-day expiration
+          document.cookie = `viewed_products=${encodeURIComponent(JSON.stringify(viewedProducts))};path=/;max-age=2592000`;
+        }
+      } catch (e) {
+        console.error('Error updating viewed products cookie:', e);
+        // Non-critical error, continue with cart update
+      }
+    }
+    
     // Show a quick animation or notification
     const element = document.getElementById(`menu-item-${item.id}`);
     if (element) {
@@ -421,6 +451,43 @@ export default function OrderPage() {
     }
   };
   
+  // Record a product view in cookies (for recommendations)
+  const recordProductView = (productId) => {
+    if (typeof document === 'undefined' || !productId) return;
+    
+    try {
+      // Get existing viewed products from cookies
+      const cookies = document.cookie.split(';');
+      const viewedProductsCookie = cookies.find(cookie => cookie.trim().startsWith('viewed_products='));
+      
+      let viewedProducts = [];
+      if (viewedProductsCookie) {
+        viewedProducts = JSON.parse(decodeURIComponent(viewedProductsCookie.split('=')[1]));
+      }
+      
+      // Add current product if not already in list
+      if (!viewedProducts.includes(productId)) {
+        viewedProducts.unshift(productId); // Add to front of array
+        
+        // Limit to last 10 viewed products
+        if (viewedProducts.length > 10) {
+          viewedProducts = viewedProducts.slice(0, 10);
+        }
+        
+        // Save back to cookie with 30-day expiration
+        document.cookie = `viewed_products=${encodeURIComponent(JSON.stringify(viewedProducts))};path=/;max-age=2592000`;
+      }
+    } catch (e) {
+      console.error('Error updating viewed products cookie:', e);
+    }
+  };
+
+  // Handle product card click
+  const handleProductClick = (item) => {
+    recordProductView(item.id);
+    // You could add additional functionality here like showing a modal with product details
+  };
+  
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navigation />
@@ -511,7 +578,8 @@ export default function OrderPage() {
               <div 
                 key={item.id} 
                 id={`menu-item-${item.id}`}
-                className="bg-white rounded-lg shadow-md overflow-hidden transition-colors"
+                className="bg-white rounded-lg shadow-md overflow-hidden transition-colors cursor-pointer"
+                onClick={() => handleProductClick(item)}
               >
                 <div className="h-40 bg-gray-200 relative overflow-hidden">
                   {item.image_url ? (
@@ -544,7 +612,10 @@ export default function OrderPage() {
                   <div className="flex items-center justify-between mt-4">
                     <span className="text-lg font-bold text-amber-900">€{item.price.toFixed(2)}</span>
                     <button
-                      onClick={() => addToCart(item)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToCart(item);
+                      }}
                       className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-800 hover:bg-amber-700"
                     >
                       Add to Cart
@@ -613,7 +684,10 @@ export default function OrderPage() {
                         
                         <div className="flex items-center">
                           <button
-                            onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateCartItemQuantity(item.id, item.quantity - 1);
+                            }}
                             className="text-gray-500 hover:text-amber-800"
                           >
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -624,7 +698,10 @@ export default function OrderPage() {
                           <span className="mx-2 text-gray-700">{item.quantity}</span>
                           
                           <button
-                            onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateCartItemQuantity(item.id, item.quantity + 1);
+                            }}
                             className="text-gray-500 hover:text-amber-800"
                           >
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
