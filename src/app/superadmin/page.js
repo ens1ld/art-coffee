@@ -6,6 +6,7 @@ import { useProfile } from '@/components/ProfileFetcher';
 import { supabase } from '@/lib/supabaseClient';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import AddSoftDeleteFields from './add-soft-delete';
 
 export default function SuperadminDashboard() {
   const { profile, loading, error } = useProfile();
@@ -157,6 +158,12 @@ export default function SuperadminDashboard() {
       
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-amber-900 mb-6">Superadmin Dashboard</h1>
+        
+        {/* Database Maintenance Tools */}
+        <AddSoftDeleteFields onComplete={() => {
+          // This will be called when the fields are added successfully
+          alert('Database updated successfully. User deletion is now available.');
+        }} />
         
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

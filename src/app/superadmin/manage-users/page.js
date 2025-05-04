@@ -37,6 +37,7 @@ export default function SuperadminManageUsers() {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
+          .is('is_deleted', null) // Only show non-deleted users by default
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -194,7 +195,17 @@ export default function SuperadminManageUsers() {
     }
     
     try {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      // Soft delete by updating the profile
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          is_deleted: true,
+          deleted_at: new Date().toISOString(),
+          // Anonymize the data for privacy
+          email: `deleted_${userId.substring(0, 8)}@deleted.user`,
+          role: 'deleted'
+        })
+        .eq('id', userId);
       
       if (error) throw error;
       
