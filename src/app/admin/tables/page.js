@@ -433,7 +433,7 @@ export default function AdminTables() {
           <div className="space-y-3">
             <div>
               <h3 className="text-sm font-medium text-gray-700">1. Download the QR codes</h3>
-              <p className="text-sm text-gray-500">Click the "Download" button on each table to save the QR code image.</p>
+              <p className="text-sm text-gray-500">Click the &quot;Download&quot; button on each table to save the QR code image.</p>
             </div>
             
             <div>
@@ -454,7 +454,7 @@ export default function AdminTables() {
           
           <div className="mt-4 p-4 bg-amber-50 rounded-md">
             <p className="text-sm text-amber-800">
-              <span className="font-medium">Tip:</span> Add a short instruction above the QR code like "Scan to order" to guide customers.
+              <span className="font-medium">Tip:</span> Add a short instruction above the QR code like &quot;Scan to order&quot; to guide customers.
             </p>
           </div>
         </div>
