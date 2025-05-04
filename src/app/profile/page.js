@@ -840,7 +840,7 @@ export default function ProfilePage() {
                   } else {
                     return (
                       <div className="text-center py-8">
-                        <p className="text-gray-500 mb-4">You haven't placed any orders yet.</p>
+                        <p className="text-gray-500 mb-4">You haven&apos;t placed any orders yet.</p>
                         <Link 
                           href="/order" 
                           className="inline-block px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700"
