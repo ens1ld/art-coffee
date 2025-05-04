@@ -57,7 +57,7 @@ export default function AddSoftDeleteFields({ onComplete }) {
         
         <p className="text-gray-600 mb-4">
           This operation will add soft delete capability to the user management system.
-          It's required for the user deletion feature to work properly.
+          It&apos;s required for the user deletion feature to work properly.
         </p>
         
         <button
