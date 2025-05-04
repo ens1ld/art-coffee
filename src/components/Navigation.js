@@ -38,11 +38,25 @@ export default function Navigation() {
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
+      
+      // Clear localStorage data to ensure complete sign out
       if (typeof window !== 'undefined') {
-        window.location.href = '/';
+        // Clear cached profile data
+        localStorage.removeItem('art-coffee-profile-cache');
+        
+        // Clear any other app data in localStorage
+        localStorage.removeItem('supabase.auth.token');
+        
+        // Force a complete page refresh to clear all state
+        window.location.href = '/?refresh=' + Date.now();
       }
     } catch (err) {
       console.error('Error signing out:', err);
+      // If standard sign out fails, try a more aggressive approach
+      if (typeof window !== 'undefined') {
+        localStorage.clear(); // Clear all localStorage as a fallback
+        window.location.href = '/';
+      }
     }
   };
 
