@@ -65,7 +65,7 @@ export default function AdminMenu() {
               description: 'Single shot of our signature espresso blend',
               price: 2.5,
               category: 'coffee',
-              image_url: '/images/espresso.jpg',
+              image_url: '/images/6.png',
               is_new: false,
               is_out_of_stock: false
             },
@@ -75,7 +75,7 @@ export default function AdminMenu() {
               description: 'Espresso with steamed milk and foam',
               price: 3.8,
               category: 'coffee',
-              image_url: '/images/cappuccino.jpg',
+              image_url: '/images/7.png',
               is_new: true,
               is_out_of_stock: false
             },

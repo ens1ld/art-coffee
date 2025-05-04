@@ -68,7 +68,7 @@ export default function HomePage() {
             </div>
             <div className="relative h-[400px] rounded-card overflow-hidden shadow-card">
                 <Image
-                  src="/images/hero-coffee.jpg"
+                  src="/images/1.png"
                   alt="Art Coffee Cup"
                   fill
                   className="object-cover"
@@ -206,7 +206,7 @@ export default function HomePage() {
             <div className="card h-full flex flex-col">
               <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
                 <Image
-                  src="/images/bulk-order.jpg" 
+                  src="/images/cards/3.png" 
                   alt="Bulk Orders"
                   fill
                   className="object-cover"
@@ -226,7 +226,7 @@ export default function HomePage() {
               <div className="card h-full flex flex-col">
                 <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
                   <Image 
-                    src="/images/cards/admin.jpg" 
+                    src="/images/admin.png" 
                     alt="Admin Dashboard"
                     fill
                     className="object-cover"
@@ -247,7 +247,7 @@ export default function HomePage() {
               <div className="card h-full flex flex-col">
                 <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
                   <Image 
-                    src="/images/cards/superadmin.jpg" 
+                    src="/images/superadmin.png" 
                     alt="Superadmin Panel"
                     fill
                     className="object-cover"

@@ -437,7 +437,7 @@ export default function ProfilePage() {
             description: 'Rich, aromatic shot of coffee',
             price: 2.50,
             category: 'coffee',
-            image_url: '/images/espresso.jpg',
+            image_url: '/images/6.png',
             is_new: false
           },
           {
@@ -455,7 +455,7 @@ export default function ProfilePage() {
             description: 'Espresso with steamed milk and foam',
             price: 3.80,
             category: 'coffee',
-            image_url: '/images/cappuccino.jpg',
+            image_url: '/images/7.png',
             is_new: true
           },
           {
