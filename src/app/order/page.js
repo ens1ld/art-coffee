@@ -7,7 +7,6 @@ import { supabase } from '@/lib/supabaseClient';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { useLanguage } from '@/context/LanguageContext';
-import { toast } from 'react-hot-toast';
 
 // Menu categories with translations - defined inside component to access translations
 const CATEGORIES = [
@@ -18,6 +17,17 @@ const CATEGORIES = [
   { id: 'lunch', name: 'Lunch', icon: '🥪' },
   { id: 'desserts', name: 'Desserts', icon: '🍰' }
 ];
+
+// Add CSS for animation
+const fadeInAnimation = `
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-in-out forwards;
+  }
+`;
 
 export default function OrderPage() {
   const { user, profile, favorites, setFavorites } = useProfile();
@@ -50,11 +60,18 @@ export default function OrderPage() {
   const [showTableSelector, setShowTableSelector] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
   
-  // Add a notification state for order confirmation
-  const [orderNotification, setOrderNotification] = useState({
-    show: false,
-    message: ''
-  });
+  // Add notification state
+  const [notification, setNotification] = useState({ show: false, message: '', type: '' });
+  
+  // Show notification helper function
+  const showNotification = (message, type = 'success') => {
+    setNotification({ show: true, message, type });
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      setNotification({ show: false, message: '', type: '' });
+    }, 3000);
+  };
   
   // Check for table param in URL (from QR code)
   useEffect(() => {
@@ -376,6 +393,11 @@ export default function OrderPage() {
     }
   };
   
+  // Remove item from cart completely
+  const removeFromCart = (itemId) => {
+    updateCartItemQuantity(itemId, 0);
+  };
+  
   // Place order
   const placeOrder = async () => {
     if (cart.length === 0) return;
@@ -434,10 +456,7 @@ export default function OrderPage() {
       setOrderSuccess(true);
       
       // Show confirmation notification that stays visible for user feedback
-      setOrderNotification({
-        show: true,
-        message: `Your order has been placed successfully! Order #${localOrderId.substring(0, 8)}`
-      });
+      showNotification(`Your order has been placed successfully! Order #${localOrderId.substring(0, 8)}`);
       
       // Hide cart after successful order
       setTimeout(() => {
@@ -446,18 +465,6 @@ export default function OrderPage() {
         
         // Keep showing notification for user confirmation, but close the cart
         setShowCart(false);
-        
-        // After the cart is closed, wait a bit more before hiding the notification
-        setTimeout(() => {
-          setOrderSuccess(false);
-          // Keep notification visible for 3 more seconds
-          setTimeout(() => {
-            setOrderNotification({
-              show: false,
-              message: ''
-            });
-          }, 3000);
-        }, 500);
       }, 1500);
       
       // Add loyalty points for logged in users (local only)
@@ -477,10 +484,7 @@ export default function OrderPage() {
       // Even for general errors, we'll show success to ensure good UX
       setOrderSuccess(true);
       setCart([]);
-      setOrderNotification({
-        show: true,
-        message: 'Your order has been placed!'
-      });
+      showNotification('Your order has been placed!', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -556,7 +560,7 @@ export default function OrderPage() {
     e.stopPropagation();
     
     if (!user) {
-      toast.error(translations.sign_in_to_favorite || 'Please sign in to save favorites');
+      showNotification(translations.sign_in_to_favorite || 'Please sign in to save favorites', 'error');
       return;
     }
 
@@ -574,7 +578,7 @@ export default function OrderPage() {
         if (error) throw error;
         
         setFavorites(favorites.filter(id => id !== productId));
-        toast.success(translations.item_removed_from_favorites || 'Item removed from favorites');
+        showNotification(translations.item_removed_from_favorites || 'Item removed from favorites');
       } else {
         // Add to favorites
         const { error } = await supabase
@@ -587,11 +591,11 @@ export default function OrderPage() {
         if (error) throw error;
         
         setFavorites([...favorites, productId]);
-        toast.success(translations.item_added_to_favorites || 'Item added to favorites');
+        showNotification(translations.item_added_to_favorites || 'Item added to favorites');
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
-      toast.error(error.message || 'Failed to update favorites');
+      showNotification(error.message || 'Failed to update favorites', 'error');
     }
   };
 
@@ -602,6 +606,9 @@ export default function OrderPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Add the CSS animation */}
+      <style jsx global>{fadeInAnimation}</style>
+      
       <Navigation />
       
       <main className="flex-grow container mx-auto px-4 py-8">
@@ -987,10 +994,12 @@ export default function OrderPage() {
         </div>
       )}
       
-      {/* Order Notification Toast */}
-      {orderNotification.show && (
-        <div className="fixed bottom-4 right-4 bg-green-500 text-white py-2 px-4 rounded-md shadow-md animate-fadeIn">
-          {orderNotification.message}
+      {/* Notification Toast */}
+      {notification.show && (
+        <div className={`fixed bottom-4 right-4 py-2 px-4 rounded-md shadow-md animate-fadeIn z-50 ${
+          notification.type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
+        }`}>
+          {notification.message}
         </div>
       )}
       
