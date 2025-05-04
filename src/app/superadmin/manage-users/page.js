@@ -35,24 +35,11 @@ export default function SuperadminManageUsers() {
       try {
         setIsLoading(true);
         
-        // Try with the is_deleted filter first
-        let { data, error } = await supabase
+        // Skip the is_deleted filter completely to avoid errors
+        const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .is('is_deleted', null)
           .order('created_at', { ascending: false });
-
-        // If we get an error about the column not existing, retry without that filter
-        if (error && error.message && error.message.includes('column profiles.is_deleted does not exist')) {
-          console.log('is_deleted column not found, fetching without filter');
-          const result = await supabase
-            .from('profiles')
-            .select('*')
-            .order('created_at', { ascending: false });
-          
-          data = result.data;
-          error = result.error;
-        }
 
         if (error) throw error;
 
@@ -73,8 +60,10 @@ export default function SuperadminManageUsers() {
           setUsers(placeholderUsers);
           setFilteredUsers(placeholderUsers);
         } else {
-          setUsers(data);
-          setFilteredUsers(data);
+          // Filter out users with role 'deleted' manually
+          const filteredData = data.filter(user => user.role !== 'deleted');
+          setUsers(filteredData);
+          setFilteredUsers(filteredData);
         }
       } catch (error) {
         console.error('Error fetching users:', error);
@@ -209,45 +198,16 @@ export default function SuperadminManageUsers() {
     }
     
     try {
-      // First try to run the add-soft-delete API to create the columns if they don't exist
-      try {
-        await fetch('/api/add-soft-delete', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-      } catch (e) {
-        console.log('Unable to add soft delete columns, proceeding with simple deletion');
-      }
-
-      // Try soft delete first
-      let { error } = await supabase
+      // Simplified approach: just mark as deleted by updating role
+      const { error } = await supabase
         .from('profiles')
         .update({
-          is_deleted: true,
-          deleted_at: new Date().toISOString(),
-          // Anonymize the data for privacy
-          email: `deleted_${userId.substring(0, 8)}@deleted.user`,
-          role: 'deleted'
+          role: 'deleted',
+          email: `deleted_${userId.substring(0, 8)}@deleted.user`
         })
         .eq('id', userId);
       
-      // If soft delete fails because the column doesn't exist, try alternate approach
-      if (error && error.message && error.message.includes('column "is_deleted" of relation "profiles" does not exist')) {
-        // Instead, try to update the role to 'deleted' as a way to mark the user as deleted
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({
-            role: 'deleted',
-            email: `deleted_${userId.substring(0, 8)}@deleted.user`
-          })
-          .eq('id', userId);
-        
-        if (updateError) throw updateError;
-      } else if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
       // Update local state
       setUsers(users.filter(user => user.id !== userId));

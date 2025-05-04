@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function AddSoftDeleteFields({ onComplete }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -9,12 +9,23 @@ export default function AddSoftDeleteFields({ onComplete }) {
   const [manualSql, setManualSql] = useState('');
   const [needsManual, setNeedsManual] = useState(false);
 
+  // SQL to run for adding soft delete fields - kept in component for easy access
+  const sqlToRun = `
+    ALTER TABLE profiles 
+    ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
+  `;
+
+  // Always show the SQL code on component mount
+  useEffect(() => {
+    setManualSql(sqlToRun);
+    setNeedsManual(true);
+  }, []);
+
   const addSoftDeleteFields = async () => {
     setIsLoading(true);
     setMessage('');
     setError('');
-    setManualSql('');
-    setNeedsManual(false);
     
     try {
       const response = await fetch('/api/add-soft-delete', {
@@ -27,6 +38,9 @@ export default function AddSoftDeleteFields({ onComplete }) {
       const result = await response.json();
       
       if (!response.ok) {
+        // Show SQL even if there's an error
+        setNeedsManual(true);
+        setManualSql(sqlToRun);
         throw new Error(result.error || 'Failed to add soft delete fields');
       }
       
@@ -40,12 +54,17 @@ export default function AddSoftDeleteFields({ onComplete }) {
           setManualSql(result.sqlToRun);
           setMessage('Database needs manual column creation via SQL Editor in Supabase dashboard.');
         } else {
+          setNeedsManual(true);
+          setManualSql(sqlToRun);
           throw new Error(result.message || 'Failed to add soft delete fields');
         }
       }
     } catch (error) {
       console.error('Error adding soft delete fields:', error);
       setError('Failed to add soft delete fields: ' + error.message);
+      // Ensure SQL is shown on error
+      setNeedsManual(true);
+      setManualSql(sqlToRun);
     } finally {
       setIsLoading(false);
     }
@@ -67,20 +86,30 @@ export default function AddSoftDeleteFields({ onComplete }) {
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
             {error}
+            {error.includes('Not authenticated') && (
+              <p className="mt-2">You need to log in again. Please refresh the page and log in.</p>
+            )}
           </div>
         )}
         
-        {needsManual && manualSql && (
-          <div className="bg-amber-50 border border-amber-400 text-amber-800 px-4 py-3 rounded relative mb-4">
-            <p className="font-medium mb-2">Please run this SQL in your Supabase SQL Editor:</p>
-            <pre className="bg-gray-800 text-white p-3 rounded text-sm overflow-auto">
-              {manualSql}
-            </pre>
-            <p className="mt-2 text-sm">
-              After running this SQL, please refresh this page and try the user management again.
-            </p>
-          </div>
-        )}
+        {/* Always show the SQL code section */}
+        <div className="bg-amber-50 border border-amber-400 text-amber-800 px-4 py-3 rounded relative mb-4">
+          <p className="font-medium mb-2">Please run this SQL in your Supabase SQL Editor:</p>
+          <pre className="bg-gray-800 text-white p-3 rounded text-sm overflow-auto">
+            {manualSql || sqlToRun}
+          </pre>
+          <p className="mt-2 text-sm">
+            <strong>Instructions:</strong>
+            <ol className="ml-4 mt-1 list-decimal">
+              <li>Go to your Supabase project dashboard</li>
+              <li>Click on "SQL Editor" in the left sidebar</li>
+              <li>Create a new query</li>
+              <li>Paste the SQL code above</li>
+              <li>Click "Run" to execute it</li>
+              <li>After running, refresh this page and try user management again</li>
+            </ol>
+          </p>
+        </div>
         
         <p className="text-gray-600 mb-4">
           This operation will add soft delete capability to the user management system.
