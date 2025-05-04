@@ -44,7 +44,7 @@ export default function NotAuthorizedPage() {
           <div className="space-y-4">
             {profile && profile.role === 'admin' && !profile.approved && (
               <div className="bg-amber-50 border border-amber-200 rounded-md p-4 text-amber-800 mb-4">
-                <p>Your admin account is pending approval. Once your account is approved, you'll be able to access admin features.</p>
+                <p>Your admin account is pending approval. Once your account is approved, you&apos;ll be able to access admin features.</p>
               </div>
             )}
             

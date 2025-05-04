@@ -392,7 +392,7 @@ export default function ProfilePage() {
                   <p className="font-medium capitalize">{profileData.role || 'User'}</p>
                   {profileData.role === 'admin' && !profileData.approved && (
                     <p className="text-amber-600 text-sm mt-1">
-                      Your admin account is pending approval. You will be notified when it's approved.
+                      Your admin account is pending approval. You will be notified when it&apos;s approved.
                     </p>
                   )}
                 </div>
@@ -462,7 +462,7 @@ export default function ProfilePage() {
                       Want to become an admin?
                     </p>
                     <p className="text-gray-600 mb-4">
-                      If you'd like to request admin access, please contact us or create a new account with admin privileges.
+                      If you&apos;d like to request admin access, please contact us or create a new account with admin privileges.
                     </p>
                     <Link 
                       href="/contact" 

@@ -41,7 +41,7 @@ export default function PendingApprovalPage() {
           <h1 className="text-2xl font-bold text-gray-800 mb-4">Admin Approval Pending</h1>
           
           <p className="text-gray-600 mb-6">
-            Your admin account is pending approval from a superadmin. You'll be able to access admin features once your account is approved.
+            Your admin account is pending approval from a superadmin. You&apos;ll be able to access admin features once your account is approved.
           </p>
           
           <div className="space-y-4">
