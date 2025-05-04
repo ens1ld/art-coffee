@@ -57,8 +57,8 @@ const en = {
   profile_email: 'Email Address',
   profile_account_type: 'Account Type',
   profile_member_since: 'Member Since',
-  profile_pending_approval: 'Your admin account is pending approval. You will be notified when it\'s approved.',
-  profile_no_orders: 'You haven\'t placed any orders yet.',
+  profile_pending_approval: 'Your admin account is pending approval. You will be notified when it&apos;s approved.',
+  profile_no_orders: 'You haven&apos;t placed any orders yet.',
   profile_browse_menu: 'Browse Menu',
   profile_order_items: 'Items:',
   profile_total: 'Total:',
@@ -84,7 +84,7 @@ const en = {
   access_superadmin_p4: 'View all admin and customer data',
   access_superadmin_p5: 'Complete access to the admin dashboard',
   become_admin: 'Want to become an admin?',
-  become_admin_p1: 'If you\'d like to request admin access, please contact us or create a new account with admin privileges.',
+  become_admin_p1: 'If you&apos;d like to request admin access, please contact us or create a new account with admin privileges.',
   contact_us: 'Contact Us',
   
   // Recommendations
@@ -162,7 +162,7 @@ const en = {
   remove_from_favorites: 'Remove from Favorites',
   favorites: 'Favorites',
   your_favorites: 'Your Favorites',
-  no_favorites: 'You don\'t have any favorites yet.',
+  no_favorites: 'You don&apos;t have any favorites yet.',
   item_added_to_favorites: 'Item added to favorites',
   item_removed_from_favorites: 'Item removed from favorites',
   sign_in_to_favorite: 'Please sign in to save favorites',
@@ -269,9 +269,9 @@ const sq = {
   // Recommendations
   recommendations: 'Rekomandime për Ju',
   view_all_products: 'Shiko të Gjitha Produktet',
-  based_on_history: 'Bazuar në historinë e porosive dhe zakonet e shfletimit, mendojmë se mund t\'ju pëlqejnë:',
+  based_on_history: 'Bazuar në historinë e porosive dhe zakonet e shfletimit, mendojmë se mund t&apos;ju pëlqejnë:',
   pro_tip: 'Këshillë:',
-  recommendation_tip: 'I përditësojmë këto rekomandime bazuar në zakonet dhe preferencat tuaja të porosive për t\'ju ndihmuar të zbuloni të preferuara të reja.',
+  recommendation_tip: 'I përditësojmë këto rekomandime bazuar në zakonet dhe preferencat tuaja të porosive për t&apos;ju ndihmuar të zbuloni të preferuara të reja.',
   
   // Order page
   order_menu: 'Menuja e Porosive',
