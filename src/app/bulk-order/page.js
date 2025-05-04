@@ -94,8 +94,13 @@ export default function BulkOrderPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Bulk order submission attempted with:', { 
+      orderedItems: products.filter(product => quantities[product.id] > 0).length, 
+      businessInfo 
+    });
     
     if (!user) {
+      console.log('No user found, showing login required message');
       setStatus('login-required');
       return;
     }
@@ -112,6 +117,13 @@ export default function BulkOrderPage() {
         !businessInfo.email.trim() || 
         !businessInfo.phone.trim() || 
         !businessInfo.address.trim()) {
+      console.log('Validation failed:', { 
+        hasItems: orderedItems.length > 0,
+        hasName: !!businessInfo.name.trim(),
+        hasEmail: !!businessInfo.email.trim(),
+        hasPhone: !!businessInfo.phone.trim(),
+        hasAddress: !!businessInfo.address.trim()
+      });
       setStatus('error');
       return;
     }
@@ -120,6 +132,7 @@ export default function BulkOrderPage() {
     setStatus('processing');
 
     try {
+      console.log('Creating bulk order in Supabase');
       // Create bulk order
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -129,37 +142,55 @@ export default function BulkOrderPage() {
           business_info: businessInfo,
           total_amount: totalAmount
         }])
-        .select()
-        .single();
+        .select();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error('Supabase order creation error:', orderError);
+        throw orderError;
+      }
+
+      console.log('Order created successfully:', order);
+      const orderId = order[0]?.id;
+      
+      if (!orderId) {
+        throw new Error('Failed to get order ID from response');
+      }
 
       // Add order items
       const orderItems = orderedItems.map((item) => ({
-        order_id: order.id,
+        order_id: orderId,
         product_id: item.product_id,
         quantity: item.quantity,
       }));
 
+      console.log('Adding order items:', orderItems);
       const { error: itemsError } = await supabase
         .from('order_items')
         .insert(orderItems);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error('Supabase order items error:', itemsError);
+        throw itemsError;
+      }
 
       // Add loyalty points (1 point per $1 spent)
+      console.log('Adding loyalty points');
       const { error: pointsError } = await supabase
         .from('loyalty_transactions')
         .insert([
           {
             user_id: user.id,
             points: Math.floor(totalAmount),
-            description: `Bulk Order #${order.id}`,
+            description: `Bulk Order #${orderId}`,
           },
         ]);
 
-      if (pointsError) throw pointsError;
+      if (pointsError) {
+        console.error('Supabase loyalty points error:', pointsError);
+        throw pointsError;
+      }
 
+      console.log('Bulk order process completed successfully');
       setStatus('success');
       setQuantities({});
       setBusinessInfo({
@@ -170,7 +201,7 @@ export default function BulkOrderPage() {
         notes: ''
       });
     } catch (error) {
-      console.error(error);
+      console.error('Error in bulk order submission:', error);
       setStatus('error');
     } finally {
       setLoading(false);
@@ -224,7 +255,7 @@ export default function BulkOrderPage() {
           <div className="mb-8 p-4 bg-error/10 border border-error rounded-lg">
             <h3 className="font-medium text-lg text-error mb-2">Error Processing Order</h3>
             <p className="text-text-secondary">
-              Please ensure you&apos;ve selected at least one product and filled in all required fields.
+              Please ensure you've selected at least one product and filled in all required business information fields (name, email, phone, and address).
             </p>
           </div>
         )}
@@ -237,7 +268,7 @@ export default function BulkOrderPage() {
               {products.map((product) => (
                 <div key={product.id} className="border border-border rounded-lg overflow-hidden hover:shadow-card-hover transition-all">
                   <div className="aspect-video bg-gray-200 relative">
-                    {/* Replace with actual product images */}
+                    {/* Use solid color placeholder instead of potentially failing images */}
                     <div className="w-full h-full bg-[#F9F5F0] flex items-center justify-center">
                       <div className="text-primary text-5xl">☕</div>
                     </div>

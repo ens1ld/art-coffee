@@ -53,6 +53,7 @@ export default function GiftCardPage() {
 
   const handleSend = async (e) => {
     e.preventDefault();
+    console.log('Submit attempted with:', { receiverEmail, amount, selectedDesign, message });
     
     if (!user) {
       console.log('No user found, showing login required message');
@@ -63,6 +64,7 @@ export default function GiftCardPage() {
     // Improved validation: check for valid email format and amount value
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!receiverEmail || !emailRegex.test(receiverEmail) || !amount || amount <= 0) {
+      console.log('Validation failed:', { receiverEmail, amount });
       setStatus('error');
       return;
     }
@@ -70,7 +72,8 @@ export default function GiftCardPage() {
     setStatus('processing');
 
     try {
-      const { error } = await supabase.from('gift_cards').insert([
+      console.log('Submitting gift card data to Supabase');
+      const { data, error } = await supabase.from('gift_cards').insert([
         {
           sender_id: user.id,
           receiver_email: receiverEmail,
@@ -78,17 +81,21 @@ export default function GiftCardPage() {
           message,
           design_id: selectedDesign
         },
-      ]);
+      ]).select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
       
+      console.log('Gift card created successfully:', data);
       setStatus('success');
       setReceiverEmail('');
       setAmount(25);
       setMessage('');
       setSelectedDesign(0);
     } catch (error) {
-      console.error(error);
+      console.error('Error in gift card submission:', error);
       setStatus('error');
     }
   };
@@ -120,7 +127,7 @@ export default function GiftCardPage() {
                   }`}
                 >
                   <div className="aspect-[3/2] bg-gray-200 relative">
-                    {/* Replace with actual gift card images */}
+                    {/* Use solid background colors instead of potentially failing images */}
                     <div className={`w-full h-full ${design.color} flex items-center justify-center`}>
                       <div className="text-white text-center p-4">
                         <h3 className="font-serif text-lg font-bold mb-1">Art Coffee</h3>
@@ -173,7 +180,7 @@ export default function GiftCardPage() {
               <div className="mb-6 p-4 bg-error/10 border border-error rounded-lg">
                 <h3 className="font-medium text-lg text-error mb-2">Error Sending Gift Card</h3>
                 <p className="text-text-secondary">
-                  Please check all fields and try again.
+                  Please check all fields are filled in correctly. Make sure to provide a valid email address and select an amount.
                 </p>
               </div>
             )}
