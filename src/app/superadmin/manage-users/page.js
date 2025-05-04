@@ -587,12 +587,9 @@ export default function SuperadminManageUsers() {
                       Reset Password
                     </button>
                     
-                    <button
-                      onClick={() => handleDeleteUser(selectedUser.id)}
-                      className="w-full text-center px-4 py-2 border border-red-800 text-red-800 rounded-md hover:bg-red-50"
-                    >
-                      Delete User
-                    </button>
+                    <div className="w-full text-center px-4 py-2 bg-gray-100 text-gray-500 rounded-md">
+                      User deletion is currently disabled
+                    </div>
                   </div>
                 </div>
               </div>
