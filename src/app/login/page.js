@@ -1,18 +1,34 @@
 'use client';
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 
+// Validation functions
+const validateEmail = (email) => {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email.toLowerCase());
+};
+
+const validatePassword = (password) => {
+  return password.length >= 6;
+};
+
 // Create a separate component that uses useSearchParams
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirectTo') || '/';
+  const errorType = searchParams.get('error');
   
+  // Add form state for better validation
   const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+  const [fieldErrors, setFieldErrors] = useState({
     email: '',
     password: '',
   });
@@ -20,12 +36,78 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [formStatus, setFormStatus] = useState('');
 
+  // Check for URL error params on mount
+  useEffect(() => {
+    if (errorType) {
+      let errorMessage = 'An error occurred during authentication';
+      
+      switch (errorType) {
+        case 'session':
+          errorMessage = 'Your session has expired. Please sign in again.';
+          break;
+        case 'profile':
+          errorMessage = 'There was an issue accessing your profile. Please try again.';
+          break;
+        case 'middleware':
+          errorMessage = searchParams.get('message') || 'Authentication failed. Please try again.';
+          break;
+        default:
+          errorMessage = 'An error occurred. Please try again.';
+      }
+      
+      setError(errorMessage);
+    }
+  }, [errorType, searchParams]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
+    
+    // Clear field-specific errors when user types
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+    
+    // Clear general error when user types
+    if (error) {
+      setError('');
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {
+      email: '',
+      password: '',
+    };
+    let isValid = true;
+    
+    // Validate email
+    if (!formData.email) {
+      errors.email = 'Email is required';
+      isValid = false;
+    } else if (!validateEmail(formData.email)) {
+      errors.email = 'Please enter a valid email address';
+      isValid = false;
+    }
+    
+    // Validate password
+    if (!formData.password) {
+      errors.password = 'Password is required';
+      isValid = false;
+    } else if (!validatePassword(formData.password)) {
+      errors.password = 'Password must be at least 6 characters';
+      isValid = false;
+    }
+    
+    setFieldErrors(errors);
+    return isValid;
   };
 
   const handleLogin = async (e) => {
@@ -33,8 +115,8 @@ function LoginForm() {
     setError('');
     setFormStatus('');
     
-    if (!formData.email || !formData.password) {
-      setError('Please enter both email and password');
+    // Validate form before submission
+    if (!validateForm()) {
       return;
     }
 
@@ -88,7 +170,16 @@ function LoginForm() {
       }
     } catch (error) {
       console.error('Login error:', error);
-      setError(error.message || 'An error occurred during login');
+      
+      // Provide user-friendly error messages
+      if (error.message.includes('Invalid login credentials')) {
+        setError('Invalid email or password. Please try again.');
+      } else if (error.message.includes('rate limit')) {
+        setError('Too many login attempts. Please try again later.');
+      } else {
+        setError(error.message || 'An error occurred during login. Please try again.');
+      }
+      
       setFormStatus('error');
     } finally {
       setLoading(false);
@@ -129,11 +220,14 @@ function LoginForm() {
                 type="email"
                 autoComplete="email"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-3 py-2 border ${fieldErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500`}
                 value={formData.email}
                 onChange={handleChange}
                 disabled={loading}
               />
+              {fieldErrors.email && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
+              )}
             </div>
 
             <div>
@@ -146,11 +240,14 @@ function LoginForm() {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-3 py-2 border ${fieldErrors.password ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500`}
                 value={formData.password}
                 onChange={handleChange}
                 disabled={loading}
               />
+              {fieldErrors.password && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
+              )}
             </div>
 
             <div className="flex items-center justify-between">

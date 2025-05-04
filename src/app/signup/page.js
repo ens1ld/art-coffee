@@ -1,10 +1,24 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+
+// Validation functions
+const validateEmail = (email) => {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email.toLowerCase());
+};
+
+const validatePassword = (password) => {
+  return password.length >= 6;
+};
+
+const validateName = (name) => {
+  return name.trim().length >= 2;
+};
 
 export default function SignupPage() {
   const router = useRouter();
@@ -14,17 +28,106 @@ export default function SignupPage() {
     password: '',
     confirmPassword: '',
   });
+  const [fieldErrors, setFieldErrors] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
   const [requestAdminRole, setRequestAdminRole] = useState(false);
+  const [formTouched, setFormTouched] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formStatus, setFormStatus] = useState('');
   
+  // Check if user is already logged in
+  useEffect(() => {
+    async function checkAuthStatus() {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        // User is already logged in, redirect to home
+        router.push('/');
+      }
+    }
+    
+    checkAuthStatus();
+  }, [router]);
+  
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
+    
+    // Mark field as touched
+    setFormTouched(prev => ({
+      ...prev,
+      [name]: true
+    }));
+    
+    // Clear field error
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+    
+    // Clear general error
+    if (error) {
+      setError('');
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    };
+    let isValid = true;
+    
+    // Validate name
+    if (!formData.name) {
+      errors.name = 'Name is required';
+      isValid = false;
+    } else if (!validateName(formData.name)) {
+      errors.name = 'Name must be at least 2 characters';
+      isValid = false;
+    }
+    
+    // Validate email
+    if (!formData.email) {
+      errors.email = 'Email is required';
+      isValid = false;
+    } else if (!validateEmail(formData.email)) {
+      errors.email = 'Please enter a valid email address';
+      isValid = false;
+    }
+    
+    // Validate password
+    if (!formData.password) {
+      errors.password = 'Password is required';
+      isValid = false;
+    } else if (!validatePassword(formData.password)) {
+      errors.password = 'Password must be at least 6 characters';
+      isValid = false;
+    }
+    
+    // Validate password confirmation
+    if (!formData.confirmPassword) {
+      errors.confirmPassword = 'Please confirm your password';
+      isValid = false;
+    } else if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+      isValid = false;
+    }
+    
+    setFieldErrors(errors);
+    return isValid;
   };
 
   const handleSignup = async (e) => {
@@ -32,14 +135,8 @@ export default function SignupPage() {
     setError('');
     setFormStatus('');
     
-    // Basic form validation
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-    
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    // Validate form before submission
+    if (!validateForm()) {
       return;
     }
     
@@ -96,8 +193,8 @@ export default function SignupPage() {
             router.push('/pending-approval');
           }, 3000);
         } else {
-          // If no email confirmation is required
-          if (authData.user.identities?.length === 0) {
+          // Check if email verification is required
+          if (authData.user.identities?.length === 0 || authData.session === null) {
             router.push('/signup/confirmation');
           } else {
             // If no email confirmation needed, redirect to order page
@@ -107,7 +204,16 @@ export default function SignupPage() {
       }
     } catch (error) {
       console.error('Signup error:', error);
-      setError(error.message || 'An error occurred during sign up');
+      
+      // Provide user-friendly error messages
+      if (error.message.includes('already registered')) {
+        setError('This email is already registered. Please use a different email or try logging in.');
+      } else if (error.message.includes('rate limit')) {
+        setError('Too many signup attempts. Please try again later.');
+      } else {
+        setError(error.message || 'An error occurred during sign up. Please try again.');
+      }
+      
       setFormStatus('error');
     } finally {
       setLoading(false);
@@ -157,11 +263,14 @@ export default function SignupPage() {
                   type="text"
                   autoComplete="name"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border ${fieldErrors.name ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500`}
                   value={formData.name}
                   onChange={handleChange}
                   disabled={loading}
                 />
+                {fieldErrors.name && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.name}</p>
+                )}
               </div>
 
               <div>
@@ -174,11 +283,14 @@ export default function SignupPage() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border ${fieldErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500`}
                   value={formData.email}
                   onChange={handleChange}
                   disabled={loading}
                 />
+                {fieldErrors.email && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
+                )}
               </div>
 
               <div>
@@ -191,14 +303,18 @@ export default function SignupPage() {
                   type="password"
                   autoComplete="new-password"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border ${fieldErrors.password ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500`}
                   value={formData.password}
                   onChange={handleChange}
                   disabled={loading}
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  Must be at least 6 characters
-                </p>
+                {fieldErrors.password ? (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
+                ) : (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Must be at least 6 characters
+                  </p>
+                )}
               </div>
 
               <div>
@@ -211,11 +327,14 @@ export default function SignupPage() {
                   type="password"
                   autoComplete="new-password"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border ${fieldErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500`}
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   disabled={loading}
                 />
+                {fieldErrors.confirmPassword && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.confirmPassword}</p>
+                )}
               </div>
               
               <div>
@@ -225,11 +344,18 @@ export default function SignupPage() {
                     checked={requestAdminRole}
                     onChange={() => setRequestAdminRole(!requestAdminRole)}
                     className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                    disabled={loading}
                   />
                   <span className="ml-2 text-sm text-gray-600">
                     Request admin access (requires approval)
                   </span>
                 </label>
+                
+                {requestAdminRole && (
+                  <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-sm text-amber-700">
+                    Note: Admin accounts require approval from a superadmin before they can access admin features.
+                  </div>
+                )}
               </div>
 
               <div>

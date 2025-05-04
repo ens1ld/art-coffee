@@ -1,268 +1,236 @@
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 
-// Define public routes (accessible without authentication)
-const PUBLIC_ROUTES = [
-  '/', 
-  '/login', 
-  '/signup', 
-  '/about', 
-  '/contact', 
-  '/terms', 
-  '/privacy', 
-  '/not-authorized',
-  '/login-manual',
-  '/direct-test-page',
-  '/order',        // Make these basic pages public so users can see them 
-  '/gift-card',    // without login, but still check role for protected pages
-  '/loyalty',
-  '/bulk-order',
-  '/menu',
-  '/api/test-supabase',
-  '/api/direct-test',
-  '/api/signup-test',
-  '/api/verify-project',
-  '/api/test-supabase',
-  '/test-supabase-connection'
-];
-
-// Define user-accessible routes (must be authenticated)
-const USER_ROUTES = [
-  '/profile',
-];
-
-// Define protected routes that require specific roles
-const ADMIN_ROUTES = ['/admin'];
-const SUPERADMIN_ROUTES = ['/superadmin'];
-
-// Helper to check if URL starts with any pattern from an array
-const urlStartsWith = (url, patterns) => {
-  return patterns.some(pattern => url.pathname.startsWith(pattern));
-};
-
-// Helper function to safely extract role from profile or user metadata
-const getUserRole = (profile, user) => {
-  // Try from profile first
-  if (profile && profile.role) {
-    return profile.role;
-  }
+// Define route protections by role
+const routeProtections = {
+  // Public routes (accessible without login)
+  public: ['/', '/login', '/signup', '/not-authorized', '/pending-approval', '/setup'],
   
-  // Then try from user metadata as fallback
-  if (user && user.user_metadata && user.user_metadata.role) {
-    return user.user_metadata.role;
-  }
+  // User routes (require login, but any role can access)
+  user: ['/order', '/gift-card', '/loyalty', '/bulk-order', '/profile'],
   
-  // Default to 'user' if nothing is found
-  return 'user';
-};
-
-// Helper to check if a user is an admin (admin or superadmin)
-const isAdmin = (role) => {
-  return role === 'admin' || role === 'superadmin';
-};
-
-// Helper to check if a user is a superadmin
-const isSuperadmin = (role) => {
-  return role === 'superadmin';
+  // Admin routes (require admin or superadmin role)
+  admin: ['/admin'],
+  
+  // Superadmin routes (require superadmin role only)
+  superadmin: ['/superadmin']
 };
 
 export async function middleware(req) {
-  console.log('Middleware running for path:', req.nextUrl.pathname);
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
   
-  // Clone the request headers
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set('x-url', req.url);
-
-  // Skip non-page routes
-  if (
-    req.nextUrl.pathname.startsWith('/_next') ||
-    req.nextUrl.pathname.startsWith('/api') ||
-    req.nextUrl.pathname.startsWith('/static') ||
-    req.nextUrl.pathname.includes('.') // Skip image/asset requests
-  ) {
-    return NextResponse.next();
-  }
-
-  // Check if the route is public
-  if (PUBLIC_ROUTES.includes(req.nextUrl.pathname)) {
-    console.log('Public route, allowing access');
-    return NextResponse.next();
-  }
-
-  // Hardcode Supabase credentials to avoid issues with env variables
-  const supabaseUrl = 'https://mwitqdkfsrtjiknglgvj.supabase.co';
-  const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im13aXRxZGtmc3J0amlrbmdsZ3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYyMzEwMzMsImV4cCI6MjA2MTgwNzAzM30.AVywGy1p7kQxMydlXS8Qa57t1Iotapjleip1beWvPKo';
+  // Required for middleware to update session if needed
+  let session = null;
 
   try {
-    // Create Supabase client using cookies from the request
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-        flowType: 'pkce',
-        cookies: {
-          get: (name) => {
-            const cookies = req.cookies.getAll();
-            const cookie = cookies.find((c) => c.name === name);
-            return cookie?.value;
-          },
-        },
-      },
-    });
-
-    // Get current session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    // Get session (this will refresh the session if needed)
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    session = currentSession;
     
-    if (sessionError) {
-      console.error('Session error in middleware:', sessionError);
-      const url = new URL('/login', req.url);
-      url.searchParams.set('redirectTo', req.nextUrl.pathname);
-      url.searchParams.set('error', 'session');
-      return NextResponse.redirect(url);
+    // Skip auth for API routes and static files
+    if (
+      req.nextUrl.pathname.startsWith('/api') || 
+      req.nextUrl.pathname.startsWith('/_next') ||
+      req.nextUrl.pathname.includes('.') // Static files like images, etc.
+    ) {
+      return res;
     }
-
-    // If no session and route is not public, redirect to login
+    
+    // Handle path matching
+    const path = req.nextUrl.pathname;
+    
+    // Check for root path and subpaths that don't need exact matching
+    const inPublicRoute = routeProtections.public.some(route => 
+      route === path || 
+      (route.endsWith('/') && path.startsWith(route)) ||
+      (path === '/' && route === '/')
+    );
+    
+    // Also check for specific subpaths that should be protected
+    // For example, /admin/users should be protected like /admin
+    const inUserRoute = routeProtections.user.some(route => 
+      path === route || path.startsWith(`${route}/`)
+    );
+    
+    const inAdminRoute = routeProtections.admin.some(route => 
+      path === route || path.startsWith(`${route}/`)
+    );
+    
+    const inSuperadminRoute = routeProtections.superadmin.some(route => 
+      path === route || path.startsWith(`${route}/`)
+    );
+    
+    // If in a public route, always allow access
+    if (inPublicRoute) {
+      return res;
+    }
+    
+    // All other routes require authentication
     if (!session) {
-      console.log('No session, redirecting to login');
-      // Store the intended destination for post-login redirect
-      const url = new URL('/login', req.url);
-      url.searchParams.set('redirectTo', req.nextUrl.pathname);
-      return NextResponse.redirect(url);
+      const redirectUrl = new URL('/login', req.url);
+      // Add a redirect parameter to return after login
+      redirectUrl.searchParams.set('redirectTo', path);
+      return NextResponse.redirect(redirectUrl);
     }
-
-    console.log('User authenticated:', session.user.email);
-
-    // User is authenticated, check for user routes
-    if (urlStartsWith(req.nextUrl, USER_ROUTES)) {
-      console.log('User route, authenticated user, allowing access');
-      // Allow all authenticated users
-      return NextResponse.next({
-        request: {
-          headers: requestHeaders,
-        },
-      });
-    }
-
-    // User is authenticated, check role for protected routes
-    if (urlStartsWith(req.nextUrl, ADMIN_ROUTES) || urlStartsWith(req.nextUrl, SUPERADMIN_ROUTES)) {
-      console.log('Protected route, checking role');
-      
-      // Get user profile
-      const { data: profile, error: profileError } = await supabase
+    
+    // At this point, user is authenticated
+    
+    // Get user role from session
+    const userRole = session.user?.user_metadata?.role || 'user';
+    
+    // Check if user profile and role are properly established
+    let hasValidProfile = false;
+    
+    try {
+      // Check if profile exists and get approval status
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('role, approved')
         .eq('id', session.user.id)
         .single();
-
-      // Handle missing profile or profile error
+      
       if (profileError) {
-        console.error('Profile error in middleware:', profileError);
-        
-        // If it's a recursion error or the table doesn't exist, try to check the metadata instead
-        if (profileError.code === '42P01' || profileError.code === '42P17') {
-          console.log('Falling back to user metadata for role check');
-          // Use user metadata as a fallback
-          const role = session.user.user_metadata?.role || 'user';
-          const isApproved = session.user.user_metadata?.approved !== false;
-          
-          // Check access based on metadata
-          if (urlStartsWith(req.nextUrl, ADMIN_ROUTES)) {
-            if (!isAdmin(role)) {
-              console.log('Not admin/superadmin based on metadata, access denied');
-              return NextResponse.redirect(new URL('/not-authorized', req.url));
-            }
+        // Profile doesn't exist or can't be accessed - force profile creation
+        if (profileError.code === 'PGRST116') { // Record not found error
+          console.log('Profile not found, attempting to create it');
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert([{
+              id: session.user.id,
+              email: session.user.email,
+              role: userRole,
+              approved: userRole === 'user', // Only auto-approve user roles
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }]);
             
-            if (role === 'admin' && !isApproved) {
-              console.log('Admin not approved based on metadata, access denied');
-              return NextResponse.redirect(new URL('/pending-approval', req.url));
-            }
+          if (insertError) {
+            console.error('Failed to create profile:', insertError);
+            // Redirect with error
+            const redirectUrl = new URL('/login', req.url);
+            redirectUrl.searchParams.set('error', 'profile');
+            redirectUrl.searchParams.set('message', 'Failed to create user profile');
+            return NextResponse.redirect(redirectUrl);
           }
           
-          if (urlStartsWith(req.nextUrl, SUPERADMIN_ROUTES) && !isSuperadmin(role)) {
-            console.log('Not superadmin based on metadata, access denied');
-            return NextResponse.redirect(new URL('/not-authorized', req.url));
+          // Re-fetch profile to get latest data
+          const { data: newProfile, error: refetchError } = await supabase
+            .from('profiles')
+            .select('role, approved')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (refetchError) {
+            // Still can't access profile, redirect to error
+            const redirectUrl = new URL('/login', req.url);
+            redirectUrl.searchParams.set('error', 'profile');
+            redirectUrl.searchParams.set('message', 'Failed to verify user profile');
+            return NextResponse.redirect(redirectUrl);
           }
           
-          console.log('Access granted based on metadata role:', role);
-          return NextResponse.next({
-            request: {
-              headers: requestHeaders,
-            },
+          hasValidProfile = true;
+          
+          // Check if admin but not approved - redirect to pending page
+          if (newProfile.role === 'admin' && !newProfile.approved) {
+            // Redirect admin to pending approval page
+            return NextResponse.redirect(new URL('/pending-approval', req.url));
+          }
+        } else {
+          // Other database errors - security policy, DB connection, etc.
+          console.error('Profile error in middleware:', profileError);
+          
+          // Try to continue without profile data, falling back to metadata
+          if (userRole === 'user') {
+            hasValidProfile = true; // Continue with basic access if user role
+          } else {
+            // For admin/superadmin, we need to verify profile status
+            const redirectUrl = new URL('/login', req.url);
+            redirectUrl.searchParams.set('error', 'profile');
+            redirectUrl.searchParams.set('message', 'Unable to verify permissions');
+            return NextResponse.redirect(redirectUrl);
+          }
+        }
+      } else {
+        // Profile exists
+        hasValidProfile = true;
+        
+        // Check if admin but not approved - redirect to pending page
+        if (profileData.role === 'admin' && !profileData.approved) {
+          // Only redirect if trying to access admin pages
+          if (inAdminRoute) {
+            return NextResponse.redirect(new URL('/pending-approval', req.url));
+          }
+        }
+        
+        // If role in profile differs from metadata, update metadata for consistency
+        if (profileData.role !== userRole) {
+          // Update user metadata to match profile (profile is source of truth)
+          await supabase.auth.updateUser({
+            data: { role: profileData.role }
           });
         }
-        
-        // For other errors, redirect to login with error message
-        const url = new URL('/login', req.url);
-        url.searchParams.set('redirectTo', req.nextUrl.pathname);
-        url.searchParams.set('error', 'profile');
-        return NextResponse.redirect(url);
       }
-
-      // Handle missing profile data
-      if (!profile) {
-        console.log('No profile found, access denied');
-        return NextResponse.redirect(new URL('/not-authorized', req.url));
-      }
-
-      // Check access to admin routes
-      if (urlStartsWith(req.nextUrl, ADMIN_ROUTES)) {
-        // Only let admins and superadmins access admin routes
-        if (!(profile.role === 'admin' || profile.role === 'superadmin')) {
-          console.log('Not admin or superadmin, access denied');
-          return NextResponse.redirect(new URL('/not-authorized', req.url));
-        }
-        
-        // Check if admin is approved (only for admin role, superadmins are always approved)
-        if (profile.role === 'admin' && profile.approved !== true) {
-          console.log('Admin not approved, access denied');
-          return NextResponse.redirect(new URL('/pending-approval', req.url));
-        }
-        
-        console.log('Admin/superadmin accessing admin route, allowing access');
-      }
-
-      // Check access to superadmin routes
-      if (urlStartsWith(req.nextUrl, SUPERADMIN_ROUTES)) {
-        // Only let superadmins access superadmin routes
-        if (profile.role !== 'superadmin') {
-          console.log('Not superadmin, access denied to superadmin route');
-          return NextResponse.redirect(new URL('/not-authorized', req.url));
-        }
-        console.log('Superadmin accessing superadmin route, allowing access');
+    } catch (error) {
+      console.error('Error accessing profile in middleware:', error);
+      
+      // If we can't verify profile, fallback to metadata
+      if (userRole === 'user') {
+        hasValidProfile = true; // Continue with basic access if user role
+      } else {
+        // For admin/superadmin, we need to verify profile status
+        const redirectUrl = new URL('/login', req.url);
+        redirectUrl.searchParams.set('error', 'profile');
+        return NextResponse.redirect(redirectUrl);
       }
     }
-
-    // Allow the request if all checks passed
-    console.log('All checks passed, allowing access');
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
+    
+    // Now, enforce route protections based on role
+    const isAdmin = userRole === 'admin' || userRole === 'superadmin';
+    const isSuperadmin = userRole === 'superadmin';
+    
+    // Allow access based on role hierarchy
+    if (inUserRoute) {
+      // All authenticated users can access user routes
+      return res;
+    } else if (inAdminRoute) {
+      // Only admin and superadmin can access admin routes
+      if (!isAdmin) {
+        return NextResponse.redirect(new URL('/not-authorized', req.url));
+      }
+      
+      return res;
+    } else if (inSuperadminRoute) {
+      // Only superadmin can access superadmin routes
+      if (!isSuperadmin) {
+        return NextResponse.redirect(new URL('/not-authorized', req.url));
+      }
+      
+      return res;
+    }
+    
+    // For any other routes, allow access for authenticated users
+    return res;
   } catch (error) {
     console.error('Middleware error:', error);
     
-    // On error, redirect to login with error message
-    const url = new URL('/login', req.url);
-    url.searchParams.set('redirectTo', req.nextUrl.pathname);
-    url.searchParams.set('error', 'middleware');
-    url.searchParams.set('message', error.message || 'Unknown error');
-    return NextResponse.redirect(url);
+    // For critical errors, redirect to login with error param
+    const redirectUrl = new URL('/login', req.url);
+    redirectUrl.searchParams.set('error', 'middleware');
+    redirectUrl.searchParams.set('message', 'An unexpected error occurred');
+    return NextResponse.redirect(redirectUrl);
   }
 }
 
-// Run middleware on all routes except static assets
+// Only run middleware on pages, not on API routes or static files
 export const config = {
   matcher: [
     /*
-     * Match all request paths except:
+     * Match all request paths except for the ones starting with:
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - images/* (image files in public)
-     * - icons/* (icon files in public)
      */
-    '/((?!_next/static|_next/image|favicon.ico|images/|icons/).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }; 
