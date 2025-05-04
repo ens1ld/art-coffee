@@ -18,9 +18,13 @@ export default function ProfilePage() {
   const [favorites, setFavorites] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
-
-  // Get user profile from context
   const { user, profile, loading, error } = useProfile();
+  const [profileData, setProfileData] = useState({
+    name: '',
+    email: '',
+    role: 'user',
+    approved: false,
+  });
 
   // Client-side only code
   useEffect(() => {
@@ -154,6 +158,18 @@ export default function ProfilePage() {
     }
   }, [mounted, user, profile]);
 
+  // Fetch user profile once authentication status is known
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        name: user.user_metadata?.name || '',
+        email: user.email || '',
+        role: profile?.role || 'user',
+        approved: profile?.approved,
+      });
+    }
+  }, [user, profile]);
+
   const handleRemoveFavorite = async (favoriteId) => {
     try {
       console.log('Removing favorite:', favoriteId);
@@ -220,6 +236,18 @@ export default function ProfilePage() {
     }
   };
 
+  // Helper function to get role badge color
+  const getRoleBadgeColor = (role) => {
+    switch (role) {
+      case 'superadmin':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'admin':
+        return 'bg-amber-100 text-amber-800 border-amber-200';
+      default:
+        return 'bg-green-100 text-green-800 border-green-200';
+    }
+  };
+
   // If still loading, show a loading spinner
   if (loading || !mounted) {
     return (
@@ -276,430 +304,177 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen flex flex-col bg-amber-50">
       <Navigation />
       
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-8 bg-amber-50 p-6 rounded-xl shadow-sm">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-amber-200 rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-bold text-amber-800">
-                    {profile.email?.charAt(0).toUpperCase() || 'U'}
-                  </span>
+      <main className="flex-grow py-10">
+        <div className="container mx-auto px-4 max-w-5xl">
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Sidebar */}
+            <div className="w-full md:w-1/3">
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div className="text-center mb-6">
+                  <div className="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold text-amber-800">
+                    {profileData.name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                  </div>
+                  <h1 className="text-xl font-bold text-amber-900">{profileData.name || 'User'}</h1>
+                  <p className="text-gray-600">{profileData.email}</p>
+                  
+                  {/* Role Badge */}
+                  <div className={`inline-block mt-2 px-3 py-1 rounded-full border ${getRoleBadgeColor(profileData.role)}`}>
+                    {profileData.role || 'user'}
+                    {profileData.role === 'admin' && !profileData.approved && (
+                      <span className="ml-1 text-xs">(pending approval)</span>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-amber-900">My Profile</h1>
-                  <p className="text-amber-700">{profile.email}</p>
+                
+                <div className="space-y-2">
+                  <Link 
+                    href="/profile" 
+                    className="block w-full py-2 text-center rounded-md bg-amber-800 text-white hover:bg-amber-700"
+                  >
+                    My Profile
+                  </Link>
+                  <Link 
+                    href="/order" 
+                    className="block w-full py-2 text-center rounded-md border border-amber-800 text-amber-800 hover:bg-amber-50"
+                  >
+                    My Orders
+                  </Link>
+                  
+                  {/* Admin/Superadmin Links */}
+                  {(profileData.role === 'admin' && profileData.approved) || profileData.role === 'superadmin' ? (
+                    <Link 
+                      href="/admin" 
+                      className="block w-full py-2 text-center rounded-md border border-amber-800 text-amber-800 hover:bg-amber-50"
+                    >
+                      Admin Dashboard
+                    </Link>
+                  ) : null}
+                  
+                  {profileData.role === 'superadmin' && (
+                    <Link 
+                      href="/superadmin" 
+                      className="block w-full py-2 text-center rounded-md border border-amber-800 text-amber-800 hover:bg-amber-50"
+                    >
+                      Superadmin Dashboard
+                    </Link>
+                  )}
+                  
+                  <button
+                    onClick={handleSignOut}
+                    className="block w-full py-2 text-center rounded-md border border-red-500 text-red-500 hover:bg-red-50"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Main Content */}
+            <div className="w-full md:w-2/3">
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 className="text-xl font-bold text-amber-900 mb-4">Account Information</h2>
+                
+                <div className="mb-4">
+                  <p className="text-gray-600 mb-1">Full Name</p>
+                  <p className="font-medium">{profileData.name || 'Not provided'}</p>
+                </div>
+                
+                <div className="mb-4">
+                  <p className="text-gray-600 mb-1">Email Address</p>
+                  <p className="font-medium">{profileData.email}</p>
+                </div>
+                
+                <div className="mb-4">
+                  <p className="text-gray-600 mb-1">Account Type</p>
+                  <p className="font-medium capitalize">{profileData.role || 'User'}</p>
+                  {profileData.role === 'admin' && !profileData.approved && (
+                    <p className="text-amber-600 text-sm mt-1">
+                      Your admin account is pending approval. You will be notified when it's approved.
+                    </p>
+                  )}
+                </div>
+                
+                <div className="mb-4">
+                  <p className="text-gray-600 mb-1">Member Since</p>
+                  <p className="font-medium">
+                    {user.created_at 
+                      ? new Date(user.created_at).toLocaleDateString() 
+                      : 'Unknown'}
+                  </p>
                 </div>
               </div>
               
-              <button
-                onClick={handleSignOut}
-                className="px-4 py-2 bg-white border border-amber-800 text-amber-800 rounded-md hover:bg-amber-800 hover:text-white transition-colors"
-              >
-                Sign Out
-              </button>
-            </div>
-            
-            {updateStatus.message && (
-              <div className={`mt-4 p-3 rounded ${updateStatus.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                {updateStatus.message}
-              </div>
-            )}
-          </div>
-          
-          <div className="mb-6 border-b border-amber-200">
-            <nav className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'overview' ? 'border-amber-800 text-amber-800 font-medium' : 'border-transparent text-gray-600 hover:text-amber-700'}`}
-              >
-                Overview
-              </button>
-              <button
-                onClick={() => setActiveTab('favorites')}
-                className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'favorites' ? 'border-amber-800 text-amber-800 font-medium' : 'border-transparent text-gray-600 hover:text-amber-700'}`}
-              >
-                Favorites
-              </button>
-              <button
-                onClick={() => setActiveTab('orders')}
-                className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'orders' ? 'border-amber-800 text-amber-800 font-medium' : 'border-transparent text-gray-600 hover:text-amber-700'}`}
-              >
-                Orders
-              </button>
-              <button
-                onClick={() => setActiveTab('settings')}
-                className={`px-4 py-2 border-b-2 transition-colors ${activeTab === 'settings' ? 'border-amber-800 text-amber-800 font-medium' : 'border-transparent text-gray-600 hover:text-amber-700'}`}
-              >
-                Settings
-              </button>
-            </nav>
-          </div>
-          
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-amber-800 mb-2">Account Information</h2>
-                <div className="bg-amber-50 p-4 rounded-md">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-gray-600 text-sm">Email</p>
-                      <p className="font-medium">{profile.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600 text-sm">User ID</p>
-                      <p className="font-medium text-sm overflow-ellipsis overflow-hidden">{profile.id}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600 text-sm">Account Type</p>
-                      <p className="font-medium">{getUserRoleDisplay(profile)}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600 text-sm">Account Status</p>
-                      <p className="font-medium">{profile.approved ? 'Approved' : 'Pending Approval'}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-lg font-semibold text-amber-800 mb-2">Profile Settings</h2>
-                <div className="bg-amber-50 p-4 rounded-md">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-gray-600 text-sm">Created At</p>
-                      <p className="font-medium">
-                        {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'N/A'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600 text-sm">Last Updated</p>
-                      <p className="font-medium">
-                        {profile.updated_at ? new Date(profile.updated_at).toLocaleDateString() : 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-lg font-semibold text-amber-800 mb-2">Recent Orders</h2>
-                {loadingData ? (
-                  <div className="bg-amber-50 p-4 rounded-md flex justify-center">
-                    <div className="animate-pulse w-full">
-                      <div className="h-8 bg-amber-200/50 mb-3 rounded"></div>
-                      <div className="h-8 bg-amber-200/50 mb-3 rounded"></div>
-                      <div className="h-8 bg-amber-200/50 rounded"></div>
-                    </div>
-                  </div>
-                ) : orders.length > 0 ? (
-                  <div className="bg-amber-50 p-4 rounded-md">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-amber-200">
-                            <th className="px-4 py-2 text-left">Order ID</th>
-                            <th className="px-4 py-2 text-left">Date</th>
-                            <th className="px-4 py-2 text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {orders.slice(0, 3).map(order => (
-                            <tr key={order.id} className="border-b border-amber-100">
-                              <td className="px-4 py-3">#{order.id.substring(0, 8)}</td>
-                              <td className="px-4 py-3">{new Date(order.created_at).toLocaleDateString()}</td>
-                              <td className="px-4 py-3 text-right">${order.total_amount ? order.total_amount.toFixed(2) : '0.00'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="mt-3 text-right">
-                      <button
-                        onClick={() => setActiveTab('orders')}
-                        className="text-amber-800 hover:text-amber-700 text-sm font-medium"
-                      >
-                        View all orders →
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-amber-50 p-4 rounded-md text-gray-600">
-                    You haven&apos;t placed any orders yet.
+              {/* Access Information */}
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 className="text-xl font-bold text-amber-900 mb-4">Access Information</h2>
+                
+                {profileData.role === 'user' && (
+                  <div className="mb-4">
+                    <p className="mb-2">
+                      You currently have regular user access which allows you to:
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                      <li>Place coffee orders</li>
+                      <li>Purchase gift cards</li>
+                      <li>Participate in our loyalty program</li>
+                      <li>View your order history</li>
+                    </ul>
                   </div>
                 )}
-              </div>
-
-              <div>
-                <h2 className="text-lg font-semibold text-amber-800 mb-2">Favorite Items</h2>
-                {loadingData ? (
-                  <div className="bg-amber-50 p-4 rounded-md flex justify-center">
-                    <div className="animate-pulse w-full">
-                      <div className="h-8 bg-amber-200/50 mb-3 rounded"></div>
-                      <div className="h-8 bg-amber-200/50 mb-3 rounded"></div>
-                    </div>
+                
+                {profileData.role === 'admin' && (
+                  <div className="mb-4">
+                    <p className="mb-2">
+                      {profileData.approved 
+                        ? 'You have admin access which allows you to:' 
+                        : 'Once approved, you will have admin access to:'}
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                      <li>View all customer orders</li>
+                      <li>Manage products and inventory</li>
+                      <li>View loyalty program analytics</li>
+                      <li>Access the admin dashboard</li>
+                    </ul>
                   </div>
-                ) : favorites.length > 0 ? (
-                  <div className="bg-amber-50 p-4 rounded-md">
-                    <div className="space-y-2">
-                      {favorites.slice(0, 3).map(favorite => (
-                        <div key={favorite.id} className="flex items-center justify-between border-b border-amber-100 pb-2">
-                          <div className="flex items-center">
-                            <div className="w-10 h-10 bg-amber-200 rounded-md mr-3 overflow-hidden relative">
-                              {favorite.products?.image_url ? (
-                                <Image
-                                  src={favorite.products.image_url}
-                                  alt={favorite.products.name || 'Coffee product'}
-                                  fill
-                                  className="object-cover"
-                                />
-                              ) : (
-                                <div className="flex items-center justify-center h-full text-amber-800">
-                                  ☕
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-medium">{favorite.products?.name || 'Coffee product'}</p>
-                              <p className="text-xs text-gray-600">{favorite.products?.category || 'Coffee'}</p>
-                            </div>
-                          </div>
-                          <button 
-                            onClick={() => handleRemoveFavorite(favorite.id)}
-                            className="text-amber-800 hover:text-amber-700 text-sm"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 text-right">
-                      <button
-                        onClick={() => setActiveTab('favorites')}
-                        className="text-amber-800 hover:text-amber-700 text-sm font-medium"
-                      >
-                        View all favorites →
-                      </button>
-                    </div>
+                )}
+                
+                {profileData.role === 'superadmin' && (
+                  <div className="mb-4">
+                    <p className="mb-2">
+                      You have superadmin access which allows you to:
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                      <li>Manage all user accounts</li>
+                      <li>Approve admin account requests</li>
+                      <li>Access all system settings</li>
+                      <li>View all admin and customer data</li>
+                      <li>Complete access to the admin dashboard</li>
+                    </ul>
                   </div>
-                ) : (
-                  <div className="bg-amber-50 p-4 rounded-md text-gray-600">
-                    You haven&apos;t added any favorites yet. Browse our products and click the heart icon to add favorites.
+                )}
+                
+                {profileData.role === 'user' && (
+                  <div className="mt-4 p-4 bg-amber-50 rounded-md">
+                    <p className="text-amber-800 font-medium mb-2">
+                      Want to become an admin?
+                    </p>
+                    <p className="text-gray-600 mb-4">
+                      If you'd like to request admin access, please contact us or create a new account with admin privileges.
+                    </p>
+                    <Link 
+                      href="/contact" 
+                      className="inline-block px-4 py-2 rounded-md bg-amber-800 text-white hover:bg-amber-700"
+                    >
+                      Contact Us
+                    </Link>
                   </div>
                 )}
               </div>
             </div>
-          )}
-          
-          {activeTab === 'favorites' && (
-            <div>
-              <h2 className="text-lg font-semibold text-amber-800 mb-4">Your Favorite Items</h2>
-              {loadingData ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="bg-amber-50 p-4 rounded-md animate-pulse">
-                      <div className="w-full h-40 bg-amber-200/50 rounded-md mb-4"></div>
-                      <div className="h-6 bg-amber-200/50 rounded mb-2 w-3/4"></div>
-                      <div className="h-4 bg-amber-200/50 rounded w-1/2"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : favorites.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {favorites.map(favorite => (
-                    <div key={favorite.id} className="bg-amber-50 p-4 rounded-md shadow-sm">
-                      <div className="w-full h-40 bg-amber-200 rounded-md mb-4 relative overflow-hidden">
-                        {favorite.products?.image_url ? (
-                          <Image
-                            src={favorite.products.image_url}
-                            alt={favorite.products.name || 'Coffee product'}
-                            fill
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center h-full text-amber-800 text-4xl">
-                            ☕
-                          </div>
-                        )}
-                      </div>
-                      <h3 className="font-semibold text-amber-900 mb-1">{favorite.products?.name || 'Coffee product'}</h3>
-                      <p className="text-sm text-gray-600 mb-3">{favorite.products?.category || 'Coffee'}</p>
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">${favorite.products?.price ? parseFloat(favorite.products.price).toFixed(2) : '0.00'}</span>
-                        <div className="space-x-2">
-                          <button 
-                            onClick={() => handleRemoveFavorite(favorite.id)}
-                            className="px-3 py-1 border border-amber-800 text-amber-800 rounded hover:bg-amber-800 hover:text-white text-sm transition-colors"
-                          >
-                            Remove
-                          </button>
-                          <Link
-                            href={`/order?product=${favorite.product_id}`}
-                            className="px-3 py-1 bg-amber-800 text-white rounded hover:bg-amber-700 text-sm transition-colors"
-                          >
-                            Order
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-amber-50 p-8 rounded-lg text-center">
-                  <div className="mb-4 text-amber-800 text-5xl">☕</div>
-                  <h3 className="text-xl font-semibold text-amber-900 mb-2">No Favorites Yet</h3>
-                  <p className="text-gray-600 mb-6">
-                    You haven&apos;t added any products to your favorites list.
-                    Browse our products and click the heart icon to add items you love.
-                  </p>
-                  <Link
-                    href="/order"
-                    className="px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition-colors"
-                  >
-                    Browse Products
-                  </Link>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {activeTab === 'orders' && (
-            <div>
-              <h2 className="text-lg font-semibold text-amber-800 mb-4">Your Order History</h2>
-              {loadingData ? (
-                <div className="bg-amber-50 p-4 rounded-md">
-                  <div className="animate-pulse w-full">
-                    <div className="h-8 bg-amber-200/50 mb-3 rounded"></div>
-                    <div className="h-8 bg-amber-200/50 mb-3 rounded"></div>
-                    <div className="h-8 bg-amber-200/50 rounded"></div>
-                  </div>
-                </div>
-              ) : orders.length > 0 ? (
-                <div className="bg-amber-50 p-4 rounded-md">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-amber-200">
-                          <th className="px-4 py-2 text-left">Order ID</th>
-                          <th className="px-4 py-2 text-left">Date</th>
-                          <th className="px-4 py-2 text-right">Total</th>
-                          <th className="px-4 py-2 text-right">Status</th>
-                          <th className="px-4 py-2 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {orders.map(order => (
-                          <tr key={order.id} className="border-b border-amber-100">
-                            <td className="px-4 py-3">#{order.id.substring(0, 8)}</td>
-                            <td className="px-4 py-3">{new Date(order.created_at).toLocaleDateString()}</td>
-                            <td className="px-4 py-3 text-right">${order.total_amount ? order.total_amount.toFixed(2) : '0.00'}</td>
-                            <td className="px-4 py-3 text-right">
-                              <span className={`inline-block px-2 py-1 rounded text-xs ${
-                                order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                order.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                                'bg-amber-100 text-amber-800'
-                              }`}>
-                                {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Pending'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <button className="text-amber-800 hover:text-amber-700 underline text-xs">
-                                View Details
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-amber-50 p-8 rounded-lg text-center">
-                  <div className="mb-4 text-amber-800 text-5xl">📦</div>
-                  <h3 className="text-xl font-semibold text-amber-900 mb-2">No Orders Yet</h3>
-                  <p className="text-gray-600 mb-6">
-                    You haven&apos;t placed any orders yet.
-                    Start your coffee journey by placing your first order!
-                  </p>
-                  <Link
-                    href="/order"
-                    className="px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition-colors"
-                  >
-                    Place Your First Order
-                  </Link>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {activeTab === 'settings' && (
-            <div>
-              <h2 className="text-lg font-semibold text-amber-800 mb-4">Account Settings</h2>
-              <div className="bg-amber-50 p-6 rounded-lg">
-                <div className="mb-6">
-                  <h3 className="text-md font-medium text-amber-900 mb-4">Email Notifications</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center">
-                      <input 
-                        type="checkbox" 
-                        id="notify-orders" 
-                        className="h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-                      />
-                      <label htmlFor="notify-orders" className="ml-2 text-gray-700">
-                        Order Updates
-                      </label>
-                    </div>
-                    <div className="flex items-center">
-                      <input 
-                        type="checkbox" 
-                        id="notify-promos" 
-                        className="h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-                      />
-                      <label htmlFor="notify-promos" className="ml-2 text-gray-700">
-                        Promotions and Deals
-                      </label>
-                    </div>
-                    <div className="flex items-center">
-                      <input 
-                        type="checkbox" 
-                        id="notify-news" 
-                        className="h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-                      />
-                      <label htmlFor="notify-news" className="ml-2 text-gray-700">
-                        Art Coffee News
-                      </label>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mb-6">
-                  <h3 className="text-md font-medium text-amber-900 mb-4">Security</h3>
-                  <button className="px-4 py-2 bg-white border border-amber-800 text-amber-800 rounded hover:bg-amber-800 hover:text-white transition-colors">
-                    Change Password
-                  </button>
-                </div>
-                
-                <div>
-                  <h3 className="text-md font-medium text-amber-900 mb-4">Privacy</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center">
-                      <input 
-                        type="checkbox" 
-                        id="privacy-tracking" 
-                        className="h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-                      />
-                      <label htmlFor="privacy-tracking" className="ml-2 text-gray-700">
-                        Allow order history tracking for recommendations
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </main>
       

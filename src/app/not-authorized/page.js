@@ -41,26 +41,32 @@ export default function NotAuthorizedPage() {
             )}
           </p>
           
-          <div className="space-y-3">
+          <div className="space-y-4">
+            {profile && profile.role === 'admin' && !profile.approved && (
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-4 text-amber-800 mb-4">
+                <p>Your admin account is pending approval. Once your account is approved, you'll be able to access admin features.</p>
+              </div>
+            )}
+            
             <Link
               href="/"
-              className="block w-full bg-amber-800 text-white py-2 px-4 rounded hover:bg-amber-700 transition-colors"
+              className="inline-block w-full py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition-colors"
             >
-              Return to Home
+              Return to Homepage
             </Link>
             
-            {user && (
-              <button
-                onClick={() => router.back()}
-                className="block w-full bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 transition-colors"
-              >
-                Go Back
-              </button>
-            )}
-          </div>
-          
-          <div className="mt-8 text-sm text-gray-500">
-            <p>If you believe this is an error, please contact an administrator.</p>
+            <Link
+              href="/profile"
+              className="inline-block w-full py-2 border border-amber-800 text-amber-800 rounded-md hover:bg-amber-50 transition-colors"
+            >
+              View Your Profile
+            </Link>
+            
+            <div className="pt-4 border-t border-gray-100">
+              <p className="text-sm text-gray-500">
+                If you believe you should have access to this page, please contact the administrator.
+              </p>
+            </div>
           </div>
         </div>
       </main>

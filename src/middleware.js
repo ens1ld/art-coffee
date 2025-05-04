@@ -40,6 +40,32 @@ const urlStartsWith = (url, patterns) => {
   return patterns.some(pattern => url.pathname.startsWith(pattern));
 };
 
+// Helper function to safely extract role from profile or user metadata
+const getUserRole = (profile, user) => {
+  // Try from profile first
+  if (profile && profile.role) {
+    return profile.role;
+  }
+  
+  // Then try from user metadata as fallback
+  if (user && user.user_metadata && user.user_metadata.role) {
+    return user.user_metadata.role;
+  }
+  
+  // Default to 'user' if nothing is found
+  return 'user';
+};
+
+// Helper to check if a user is an admin (admin or superadmin)
+const isAdmin = (role) => {
+  return role === 'admin' || role === 'superadmin';
+};
+
+// Helper to check if a user is a superadmin
+const isSuperadmin = (role) => {
+  return role === 'superadmin';
+};
+
 export async function middleware(req) {
   console.log('Middleware running for path:', req.nextUrl.pathname);
   
@@ -86,7 +112,15 @@ export async function middleware(req) {
     });
 
     // Get current session
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('Session error in middleware:', sessionError);
+      const url = new URL('/login', req.url);
+      url.searchParams.set('redirectTo', req.nextUrl.pathname);
+      url.searchParams.set('error', 'session');
+      return NextResponse.redirect(url);
+    }
 
     // If no session and route is not public, redirect to login
     if (!session) {
@@ -96,6 +130,8 @@ export async function middleware(req) {
       url.searchParams.set('redirectTo', req.nextUrl.pathname);
       return NextResponse.redirect(url);
     }
+
+    console.log('User authenticated:', session.user.email);
 
     // User is authenticated, check for user routes
     if (urlStartsWith(req.nextUrl, USER_ROUTES)) {
@@ -113,13 +149,57 @@ export async function middleware(req) {
       console.log('Protected route, checking role');
       
       // Get user profile
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role, approved')
         .eq('id', session.user.id)
         .single();
 
-      // Handle missing profile
+      // Handle missing profile or profile error
+      if (profileError) {
+        console.error('Profile error in middleware:', profileError);
+        
+        // If it's a recursion error or the table doesn't exist, try to check the metadata instead
+        if (profileError.code === '42P01' || profileError.code === '42P17') {
+          console.log('Falling back to user metadata for role check');
+          // Use user metadata as a fallback
+          const role = session.user.user_metadata?.role || 'user';
+          const isApproved = session.user.user_metadata?.approved !== false;
+          
+          // Check access based on metadata
+          if (urlStartsWith(req.nextUrl, ADMIN_ROUTES)) {
+            if (!isAdmin(role)) {
+              console.log('Not admin/superadmin based on metadata, access denied');
+              return NextResponse.redirect(new URL('/not-authorized', req.url));
+            }
+            
+            if (role === 'admin' && !isApproved) {
+              console.log('Admin not approved based on metadata, access denied');
+              return NextResponse.redirect(new URL('/pending-approval', req.url));
+            }
+          }
+          
+          if (urlStartsWith(req.nextUrl, SUPERADMIN_ROUTES) && !isSuperadmin(role)) {
+            console.log('Not superadmin based on metadata, access denied');
+            return NextResponse.redirect(new URL('/not-authorized', req.url));
+          }
+          
+          console.log('Access granted based on metadata role:', role);
+          return NextResponse.next({
+            request: {
+              headers: requestHeaders,
+            },
+          });
+        }
+        
+        // For other errors, redirect to login with error message
+        const url = new URL('/login', req.url);
+        url.searchParams.set('redirectTo', req.nextUrl.pathname);
+        url.searchParams.set('error', 'profile');
+        return NextResponse.redirect(url);
+      }
+
+      // Handle missing profile data
       if (!profile) {
         console.log('No profile found, access denied');
         return NextResponse.redirect(new URL('/not-authorized', req.url));
@@ -163,13 +243,12 @@ export async function middleware(req) {
   } catch (error) {
     console.error('Middleware error:', error);
     
-    // On error, allow the request to proceed 
-    // (the page will handle authentication failure gracefully)
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
+    // On error, redirect to login with error message
+    const url = new URL('/login', req.url);
+    url.searchParams.set('redirectTo', req.nextUrl.pathname);
+    url.searchParams.set('error', 'middleware');
+    url.searchParams.set('message', error.message || 'Unknown error');
+    return NextResponse.redirect(url);
   }
 }
 

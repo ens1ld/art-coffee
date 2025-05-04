@@ -9,14 +9,13 @@ import Footer from '@/components/Footer';
 
 export default function SuperAdminPage() {
   const { profile, user, loading, error } = useProfile();
-  const [pendingAdminsCount, setPendingAdminsCount] = useState(0);
   const [stats, setStats] = useState({
     users: 0,
-    orders: 0,
-    products: 0,
-    revenue: 0
+    admins: 0,
+    pendingAdmins: 0,
+    superadmins: 0
   });
-  const [fetchingStats, setFetchingStats] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(true);
   const router = useRouter();
 
   // Check authentication and authorization
@@ -28,70 +27,36 @@ export default function SuperAdminPage() {
     }
   }, [loading, user, profile, router]);
 
-  // Fetch superadmin dashboard data
+  // Load superadmin dashboard stats
   useEffect(() => {
-    const fetchData = async () => {
-      if (!user || !profile || profile.role !== 'superadmin') return;
-      
-      try {
-        setFetchingStats(true);
-        
-        // Fetch count of pending admin approvals
-        const { data: pendingAdmins, error: pendingError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('role', 'admin')
-          .eq('approved', false);
-        
-        if (!pendingError) {
-          setPendingAdminsCount(pendingAdmins?.length || 0);
-        }
-        
-        // Fetch basic stats
-        await fetchStats();
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setFetchingStats(false);
-      }
-    };
-    
-    fetchData();
+    if (user && profile && profile.role === 'superadmin') {
+      fetchStats();
+    }
   }, [user, profile]);
 
   const fetchStats = async () => {
     try {
-      // Get users count
-      const { count: usersCount } = await supabase
+      setLoadingStats(true);
+      
+      // Get counts of different user types
+      const { data: allProfiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*', { count: 'exact', head: true });
+        .select('role, approved');
       
-      // Get orders count
-      const { count: ordersCount } = await supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true });
+      if (profilesError) throw profilesError;
       
-      // Get products count
-      const { count: productsCount } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true });
-      
-      // Get revenue (mock calculation - replace with actual logic)
-      const { data: ordersData } = await supabase
-        .from('orders')
-        .select('total_amount')
-        .eq('status', 'completed');
-      
-      const revenue = ordersData?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
-      
-      setStats({
-        users: usersCount || 0,
-        orders: ordersCount || 0,
-        products: productsCount || 0,
-        revenue: revenue
-      });
-    } catch (error) {
-      console.error('Error fetching stats:', error);
+      if (allProfiles) {
+        const users = allProfiles.filter(p => p.role === 'user').length;
+        const admins = allProfiles.filter(p => p.role === 'admin' && p.approved).length;
+        const pendingAdmins = allProfiles.filter(p => p.role === 'admin' && !p.approved).length;
+        const superadmins = allProfiles.filter(p => p.role === 'superadmin').length;
+        
+        setStats({ users, admins, pendingAdmins, superadmins });
+      }
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+    } finally {
+      setLoadingStats(false);
     }
   };
 
@@ -151,174 +116,167 @@ export default function SuperAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       <Navigation />
       
-      <main className="flex-grow py-8 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
+      <main className="flex-grow py-10">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <div className="mb-8">
             <h1 className="text-3xl font-bold text-amber-900">Superadmin Dashboard</h1>
-            
-            <Link 
-              href="/admin"
-              className="bg-amber-800 text-white px-4 py-2 rounded-md hover:bg-amber-700 transition-colors"
-            >
-              Go to Admin
-            </Link>
+            <p className="text-gray-600 mt-1">Manage users, admins, and system settings</p>
           </div>
           
-          {pendingAdminsCount > 0 && (
-            <Link href="/superadmin/approve-admins" className="block mb-8 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-lg flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-amber-500">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                </svg>
-                <p className="font-medium">{pendingAdminsCount} pending admin approval{pendingAdminsCount !== 1 ? 's' : ''}</p>
-              </div>
-              <div className="text-amber-700 font-medium">Review Now →</div>
-            </Link>
-          )}
-          
+          {/* Stats Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-medium text-gray-600 mb-1">Total Users</h3>
-              <p className="text-3xl font-semibold">
-                {fetchingStats ? (
-                  <span className="text-gray-400">...</span>
-                ) : (
-                  stats.users
-                )}
-              </p>
-              <Link 
-                href="/superadmin/users"
-                className="mt-4 text-amber-700 hover:text-amber-600 inline-block"
-              >
-                Manage users →
-              </Link>
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-amber-800">Users</h2>
+                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-amber-600">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-3xl font-bold text-gray-700">{loadingStats ? '...' : stats.users}</p>
+              <p className="text-gray-500 text-sm mt-1">Regular users</p>
             </div>
             
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-medium text-gray-600 mb-1">Total Orders</h3>
-              <p className="text-3xl font-semibold">
-                {fetchingStats ? (
-                  <span className="text-gray-400">...</span>
-                ) : (
-                  stats.orders
-                )}
-              </p>
-              <Link 
-                href="/superadmin/orders"
-                className="mt-4 text-amber-700 hover:text-amber-600 inline-block"
-              >
-                View orders →
-              </Link>
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-amber-800">Admins</h2>
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-green-600">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-3xl font-bold text-gray-700">{loadingStats ? '...' : stats.admins}</p>
+              <p className="text-gray-500 text-sm mt-1">Approved admins</p>
             </div>
             
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-medium text-gray-600 mb-1">Total Products</h3>
-              <p className="text-3xl font-semibold">
-                {fetchingStats ? (
-                  <span className="text-gray-400">...</span>
-                ) : (
-                  stats.products
-                )}
-              </p>
-              <Link 
-                href="/superadmin/products"
-                className="mt-4 text-amber-700 hover:text-amber-600 inline-block"
-              >
-                Manage products →
-              </Link>
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-amber-800">Pending</h2>
+                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-amber-600">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-3xl font-bold text-gray-700">{loadingStats ? '...' : stats.pendingAdmins}</p>
+              <p className="text-gray-500 text-sm mt-1">Pending admin approvals</p>
             </div>
             
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-medium text-gray-600 mb-1">Total Revenue</h3>
-              <p className="text-3xl font-semibold">
-                {fetchingStats ? (
-                  <span className="text-gray-400">...</span>
-                ) : (
-                  `$${stats.revenue.toFixed(2)}`
-                )}
-              </p>
-              <Link 
-                href="/superadmin/reports"
-                className="mt-4 text-amber-700 hover:text-amber-600 inline-block"
-              >
-                View reports →
-              </Link>
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-amber-800">Superadmins</h2>
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-red-600">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-3xl font-bold text-gray-700">{loadingStats ? '...' : stats.superadmins}</p>
+              <p className="text-gray-500 text-sm mt-1">Total superadmins</p>
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Link href="/superadmin/approve-admins" className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center text-center hover:shadow-lg transition-shadow h-full">
-              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-amber-700">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-                </svg>
+          {/* Actions Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-6">
+                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-amber-600">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-amber-800 mb-2">Approve Admins</h3>
+                <p className="text-gray-600 mb-4">
+                  Review and approve pending admin account requests.
+                  {stats.pendingAdmins > 0 && (
+                    <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                      {stats.pendingAdmins} pending
+                    </span>
+                  )}
+                </p>
+                <Link 
+                  href="/superadmin/approve-admins"
+                  className="inline-block px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700"
+                >
+                  Manage Approvals
+                </Link>
               </div>
-              <h3 className="text-lg font-medium mb-2">Manage Admins</h3>
-              <p className="text-gray-600 mb-4">Approve or deny admin account requests</p>
-              <div className="text-amber-700 font-medium mt-auto">Manage →</div>
-            </Link>
+            </div>
             
-            <Link href="/superadmin/users" className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center text-center hover:shadow-lg transition-shadow h-full">
-              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-amber-700">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-                </svg>
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-6">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-green-600">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-amber-800 mb-2">Manage Users</h3>
+                <p className="text-gray-600 mb-4">
+                  View, edit, or delete user accounts. Change user roles and permissions.
+                </p>
+                <Link 
+                  href="/superadmin/manage-users"
+                  className="inline-block px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700"
+                >
+                  Manage Users
+                </Link>
               </div>
-              <h3 className="text-lg font-medium mb-2">Manage Users</h3>
-              <p className="text-gray-600 mb-4">View and update user information</p>
-              <div className="text-amber-700 font-medium mt-auto">Manage →</div>
-            </Link>
+            </div>
             
-            <Link href="/superadmin/settings" className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center text-center hover:shadow-lg transition-shadow h-full">
-              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-amber-700">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-6">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-blue-600">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-amber-800 mb-2">System Settings</h3>
+                <p className="text-gray-600 mb-4">
+                  Configure application settings, manage database, and view system logs.
+                </p>
+                <Link 
+                  href="/superadmin/settings"
+                  className="inline-block px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700"
+                >
+                  System Settings
+                </Link>
               </div>
-              <h3 className="text-lg font-medium mb-2">System Settings</h3>
-              <p className="text-gray-600 mb-4">Configure application settings</p>
-              <div className="text-amber-700 font-medium mt-auto">Configure →</div>
-            </Link>
+            </div>
           </div>
           
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold text-amber-800 mb-4">Advanced Management</h2>
+          {/* Database Management Section */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 className="text-xl font-semibold text-amber-800 mb-4">Database Management</h2>
+            <p className="text-gray-600 mb-6">
+              Use these tools to manage and troubleshoot the database and permissions.
+            </p>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Link 
-                href="/superadmin/roles"
-                className="p-4 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors"
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Link
+                href="/setup"
+                className="flex items-center justify-center px-4 py-3 bg-amber-50 border border-amber-300 rounded-md text-amber-800 hover:bg-amber-100 transition-colors"
               >
-                <h3 className="font-medium text-amber-900 mb-1">Role Management</h3>
-                <p className="text-sm text-gray-600">Manage user roles and permissions</p>
+                Database Setup
               </Link>
               
-              <Link 
-                href="/superadmin/database"
-                className="p-4 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors"
+              <Link
+                href="/superadmin/database/backup"
+                className="flex items-center justify-center px-4 py-3 bg-amber-50 border border-amber-300 rounded-md text-amber-800 hover:bg-amber-100 transition-colors"
               >
-                <h3 className="font-medium text-amber-900 mb-1">Database Access</h3>
-                <p className="text-sm text-gray-600">Advanced database operations</p>
+                Backup Database
               </Link>
               
-              <Link 
-                href="/superadmin/logs"
-                className="p-4 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors"
+              <Link
+                href="/superadmin/database/logs"
+                className="flex items-center justify-center px-4 py-3 bg-amber-50 border border-amber-300 rounded-md text-amber-800 hover:bg-amber-100 transition-colors"
               >
-                <h3 className="font-medium text-amber-900 mb-1">System Logs</h3>
-                <p className="text-sm text-gray-600">View application logs</p>
-              </Link>
-              
-              <Link 
-                href="/superadmin/backups"
-                className="p-4 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors"
-              >
-                <h3 className="font-medium text-amber-900 mb-1">Backups</h3>
-                <p className="text-sm text-gray-600">Manage system backups</p>
+                View Database Logs
               </Link>
             </div>
           </div>
