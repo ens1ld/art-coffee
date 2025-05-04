@@ -621,11 +621,11 @@ export default function OrderPage() {
               
               {/* Category Filter + Table Info */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div className="flex-1">
-                  <div className="flex overflow-x-auto pb-2 space-x-2">
-                    <button
+                <div className="w-full overflow-x-auto pb-2 hide-scrollbar">
+                  <div className="flex space-x-2" style={{ minWidth: 'max-content' }}>
+                    <button 
                       onClick={() => handleCategoryChange('all')}
-                      className={`px-3 py-2 rounded-lg font-medium text-sm transition-all duration-200 shadow-sm ${activeCategory === 'all' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-amber-100 hover:text-amber-800'}`}
+                      className={`px-4 h-10 flex-shrink-0 flex items-center justify-center rounded-lg font-medium text-sm transition-all duration-200 shadow-sm ${activeCategory === 'all' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-amber-100 hover:text-amber-800'}`}
                     >
                       {translations.all}
                     </button>
@@ -634,17 +634,17 @@ export default function OrderPage() {
                       <button
                         key={category.id}
                         onClick={() => handleCategoryChange(category.id)}
-                        className={`px-3 py-2 rounded-lg font-medium text-sm transition-all duration-200 shadow-sm whitespace-nowrap ${activeCategory === category.id ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-amber-100 hover:text-amber-800'}`}
+                        className={`px-4 h-10 flex-shrink-0 flex items-center justify-center rounded-lg font-medium text-sm transition-all duration-200 shadow-sm ${activeCategory === category.id ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-amber-100 hover:text-amber-800'}`}
                       >
                         <span className="mr-1">{category.icon}</span>
-                        {translations[`category_${category.id}`] || category.name}
+                        <span className="whitespace-nowrap">{translations[`category_${category.id}`] || category.name}</span>
                       </button>
                     ))}
                   </div>
                 </div>
                 
-                <div className="flex items-center">
-                  <span className="text-gray-600 mr-2">{translations.table}:</span>
+                <div className="flex-shrink-0 flex items-center">
+                  <span className="text-gray-600 mr-2 whitespace-nowrap">{translations.table}:</span>
                   {tableNumber ? (
                     <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full font-medium text-sm">
                       {tableNumber}
@@ -658,7 +658,7 @@ export default function OrderPage() {
                   ) : (
                     <button 
                       onClick={() => setShowTableSelector(true)}
-                      className="text-amber-600 hover:text-amber-800 font-medium"
+                      className="text-amber-600 hover:text-amber-800 font-medium whitespace-nowrap"
                     >
                       {translations.select_table}
                     </button>
@@ -1004,6 +1004,17 @@ export default function OrderPage() {
       )}
       
       <Footer />
+      
+      {/* Add CSS to hide scrollbar but maintain functionality */}
+      <style jsx global>{`
+        .hide-scrollbar {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;  /* Chrome, Safari, Opera */
+        }
+      `}</style>
     </div>
   );
 }
