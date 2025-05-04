@@ -130,7 +130,7 @@ export default function AdminDashboard() {
               <p className="text-2xl font-bold text-amber-900">12</p>
             </div>
             <div className="bg-emerald-50 p-4 rounded-md">
-              <p className="text-sm text-emerald-700">Today's Sales</p>
+              <p className="text-sm text-emerald-700">Today&apos;s Sales</p>
               <p className="text-2xl font-bold text-emerald-900">€320</p>
             </div>
             <div className="bg-blue-50 p-4 rounded-md">

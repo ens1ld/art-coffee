@@ -46,7 +46,7 @@ export default function PendingApprovalPage() {
           
           <p className="text-gray-600 mb-6">
             Your admin account is pending approval from a superadmin. 
-            You'll receive notification when your account is approved.
+            You&apos;ll receive notification when your account is approved.
           </p>
           
           <div className="space-y-4">
