@@ -60,7 +60,9 @@ export default function GiftCardPage() {
       return;
     }
     
-    if (!receiverEmail || !amount) {
+    // Improved validation: check for valid email format and amount value
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!receiverEmail || !emailRegex.test(receiverEmail) || !amount || amount <= 0) {
       setStatus('error');
       return;
     }

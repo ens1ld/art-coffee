@@ -107,7 +107,11 @@ export default function BulkOrderPage() {
         quantity: quantities[product.id],
       }));
 
-    if (orderedItems.length === 0) {
+    if (orderedItems.length === 0 || 
+        !businessInfo.name.trim() || 
+        !businessInfo.email.trim() || 
+        !businessInfo.phone.trim() || 
+        !businessInfo.address.trim()) {
       setStatus('error');
       return;
     }
