@@ -20,7 +20,7 @@ export default function AddSoftDeleteFields({ onComplete }) {
   useEffect(() => {
     setManualSql(sqlToRun);
     setNeedsManual(true);
-  }, []);
+  }, [sqlToRun]);
 
   const addSoftDeleteFields = async () => {
     setIsLoading(true);
@@ -102,10 +102,10 @@ export default function AddSoftDeleteFields({ onComplete }) {
             <strong>Instructions:</strong>
             <ol className="ml-4 mt-1 list-decimal">
               <li>Go to your Supabase project dashboard</li>
-              <li>Click on "SQL Editor" in the left sidebar</li>
+              <li>Click on &quot;SQL Editor&quot; in the left sidebar</li>
               <li>Create a new query</li>
               <li>Paste the SQL code above</li>
-              <li>Click "Run" to execute it</li>
+              <li>Click &quot;Run&quot; to execute it</li>
               <li>After running, refresh this page and try user management again</li>
             </ol>
           </p>
