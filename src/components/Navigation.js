@@ -15,14 +15,15 @@ export default function Navigation() {
   const profile = profileContext?.profile;
   const user = profileContext?.user;
   const loading = profileContext?.loading || false;
+  const isAdmin = profileContext?.isAdmin || false;
+  const isSuperadmin = profileContext?.isSuperadmin || false;
   
   const pathname = usePathname();
   
   // Set mounted to true after component mounts
   useEffect(() => {
     setMounted(true);
-    console.log('Navigation component mounted, auth state:', !!user);
-  }, [user]);
+  }, []);
   
   // Helper function to check if a path is active
   const isActive = (path) => {
@@ -60,8 +61,9 @@ export default function Navigation() {
           <Link href="/" className={`text-amber-900 hover:text-amber-700 ${isActive('/') ? 'font-semibold' : ''}`}>
             Home
           </Link>
-          {/* Only show member links for normal users */}
-          {(!profile?.role || profile?.role === 'user') && (
+          
+          {/* User routes available to all authenticated users */}
+          {mounted && user && (
             <>
               <Link href="/order" className={`text-amber-900 hover:text-amber-700 ${isActive('/order') ? 'font-semibold' : ''}`}>
                 Order
@@ -77,8 +79,9 @@ export default function Navigation() {
               </Link>
             </>
           )}
-          {/* Only show admin/superadmin links for those roles */}
-          {profile?.role === 'admin' && profile.approved && (
+          
+          {/* Admin links - only visible to admins and superadmins */}
+          {mounted && isAdmin && (
             <Link 
               href="/admin" 
               className={`text-amber-900 hover:text-amber-700 ${isActive('/admin') ? 'font-semibold' : ''}`}
@@ -87,21 +90,14 @@ export default function Navigation() {
             </Link>
           )}
           
-          {profile?.role === 'superadmin' && (
-            <>
-              <Link 
-                href="/admin" 
-                className={`text-amber-900 hover:text-amber-700 ${isActive('/admin') ? 'font-semibold' : ''}`}
-              >
-                Admin
-              </Link>
-              <Link 
-                href="/superadmin" 
-                className={`text-amber-900 hover:text-amber-700 ${isActive('/superadmin') ? 'font-semibold' : ''}`}
-              >
-                Superadmin
-              </Link>
-            </>
+          {/* Superadmin links - only visible to superadmins */}
+          {mounted && isSuperadmin && (
+            <Link 
+              href="/superadmin" 
+              className={`text-amber-900 hover:text-amber-700 ${isActive('/superadmin') ? 'font-semibold' : ''}`}
+            >
+              Superadmin
+            </Link>
           )}
         </nav>
 
@@ -151,21 +147,27 @@ export default function Navigation() {
             <Link href="/" className={`text-amber-900 hover:text-amber-700 ${isActive('/') ? 'font-semibold' : ''}`}>
               Home
             </Link>
-            <Link href="/order" className={`text-amber-900 hover:text-amber-700 ${isActive('/order') ? 'font-semibold' : ''}`}>
-              Order
-            </Link>
-            <Link href="/loyalty" className={`text-amber-900 hover:text-amber-700 ${isActive('/loyalty') ? 'font-semibold' : ''}`}>
-              Loyalty
-            </Link>
-            <Link href="/gift-card" className={`text-amber-900 hover:text-amber-700 ${isActive('/gift-card') ? 'font-semibold' : ''}`}>
-              Gift Cards
-            </Link>
-            <Link href="/bulk-order" className={`text-amber-900 hover:text-amber-700 ${isActive('/bulk-order') ? 'font-semibold' : ''}`}>
-              Bulk Order
-            </Link>
+            
+            {/* Only show user routes if authenticated */}
+            {mounted && user && (
+              <>
+                <Link href="/order" className={`text-amber-900 hover:text-amber-700 ${isActive('/order') ? 'font-semibold' : ''}`}>
+                  Order
+                </Link>
+                <Link href="/loyalty" className={`text-amber-900 hover:text-amber-700 ${isActive('/loyalty') ? 'font-semibold' : ''}`}>
+                  Loyalty
+                </Link>
+                <Link href="/gift-card" className={`text-amber-900 hover:text-amber-700 ${isActive('/gift-card') ? 'font-semibold' : ''}`}>
+                  Gift Cards
+                </Link>
+                <Link href="/bulk-order" className={`text-amber-900 hover:text-amber-700 ${isActive('/bulk-order') ? 'font-semibold' : ''}`}>
+                  Bulk Order
+                </Link>
+              </>
+            )}
             
             {/* Admin links shown conditionally */}
-            {mounted && profile?.role === 'admin' && profile.approved && (
+            {mounted && isAdmin && (
               <Link 
                 href="/admin" 
                 className={`text-amber-900 hover:text-amber-700 ${isActive('/admin') ? 'font-semibold' : ''}`}
@@ -174,21 +176,14 @@ export default function Navigation() {
               </Link>
             )}
             
-            {mounted && profile?.role === 'superadmin' && (
-              <>
-                <Link 
-                  href="/admin" 
-                  className={`text-amber-900 hover:text-amber-700 ${isActive('/admin') ? 'font-semibold' : ''}`}
-                >
-                  Admin
-                </Link>
-                <Link 
-                  href="/superadmin" 
-                  className={`text-amber-900 hover:text-amber-700 ${isActive('/superadmin') ? 'font-semibold' : ''}`}
-                >
-                  Superadmin
-                </Link>
-              </>
+            {/* Superadmin links shown conditionally */}
+            {mounted && isSuperadmin && (
+              <Link 
+                href="/superadmin" 
+                className={`text-amber-900 hover:text-amber-700 ${isActive('/superadmin') ? 'font-semibold' : ''}`}
+              >
+                Superadmin
+              </Link>
             )}
             
             {mounted && user ? (

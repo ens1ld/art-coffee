@@ -4,44 +4,16 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { supabase } from '@/lib/supabaseClient';
+import { useProfile } from '@/components/ProfileFetcher';
 
 export default function HomePage() {
-  const [userRole, setUserRole] = useState(null);
-  const [user, setUser] = useState(null);
+  const { user, profile, isAdmin, isSuperadmin, loading } = useProfile();
   const [mounted, setMounted] = useState(false);
   
   // Set mounted state to true after component mounts (client side only)
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Fetch user data on the client side only
-  useEffect(() => {
-    if (!mounted) return;
-    
-    const checkUser = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (profile) {
-            setUserRole(profile.role);
-            setUser(session.user);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking user session:', error);
-      }
-    };
-    
-    checkUser();
-  }, [mounted]);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -59,8 +31,8 @@ export default function HomePage() {
                 At Art Coffee, we craft each cup with passion and precision, using only the finest beans sourced from around the world. Discover flavors that tell a story.
               </p>
               <div className="flex flex-wrap gap-4">
-                {/* Only show order/menu/profile links for normal users */}
-                {(!userRole || userRole === 'user') && (
+                {/* User not logged in - show order and menu links */}
+                {!mounted || !user ? (
                   <>
                     <Link href="/order" className="btn-primary">
                       Start Your Order
@@ -68,27 +40,28 @@ export default function HomePage() {
                     <Link href="/menu" className="btn-secondary">
                       View Menu
                     </Link>
-                    {mounted && user && (
-                      <Link href="/profile" className="btn-secondary">
-                        My Profile
+                  </>
+                ) : (
+                  <>
+                    {/* User logged in - show relevant links based on role */}
+                    <Link href="/order" className="btn-primary">
+                      Start Your Order
+                    </Link>
+                    <Link href="/profile" className="btn-secondary">
+                      My Profile
+                    </Link>
+                    
+                    {/* Admin and Superadmin links */}
+                    {isAdmin && (
+                      <Link href="/admin" className="btn-primary">
+                        Go to Admin Dashboard
                       </Link>
                     )}
-                  </>
-                )}
-                {/* Only show admin/superadmin links for those roles */}
-                {userRole === 'admin' && (
-                  <Link href="/admin" className="btn-primary">
-                    Go to Admin Dashboard
-                  </Link>
-                )}
-                {userRole === 'superadmin' && (
-                  <>
-                    <Link href="/admin" className="btn-primary">
-                      Go to Admin Dashboard
-                    </Link>
-                    <Link href="/superadmin" className="btn-secondary">
-                      Go to Superadmin Panel
-                    </Link>
+                    {isSuperadmin && (
+                      <Link href="/superadmin" className="btn-secondary">
+                        Go to Superadmin Panel
+                      </Link>
+                    )}
                   </>
                 )}
               </div>
@@ -175,6 +148,7 @@ export default function HomePage() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* These service cards are visible to all users */}
             <div className="card h-full flex flex-col">
               <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
                 <Image 
@@ -247,8 +221,8 @@ export default function HomePage() {
               </Link>
             </div>
             
-            {/* Admin links - conditionally rendered based on role */}
-            {mounted && userRole === 'admin' && (
+            {/* Admin card - only shown to admins and superadmins */}
+            {mounted && isAdmin && (
               <div className="card h-full flex flex-col">
                 <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
                   <Image 
@@ -268,8 +242,8 @@ export default function HomePage() {
               </div>
             )}
             
-            {/* Superadmin links - conditionally rendered based on role */}
-            {mounted && userRole === 'superadmin' && (
+            {/* Superadmin card - only shown to superadmins */}
+            {mounted && isSuperadmin && (
               <div className="card h-full flex flex-col">
                 <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
                   <Image 
@@ -382,15 +356,6 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
-
-      {user && (
-        <Link 
-          href="/profile" 
-          className="mt-4 inline-block px-6 py-3 bg-amber-800 text-white rounded-lg shadow hover:bg-amber-700 transition-colors"
-        >
-          View Your Profile
-        </Link>
-      )}
 
       <Footer />
     </div>

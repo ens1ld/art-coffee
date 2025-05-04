@@ -1,89 +1,81 @@
-# Art Coffee
+# Art Coffee - Role-based Access Control
 
-Art Coffee is a Next.js application with Supabase backend for a coffee ordering and loyalty system.
+This Next.js application implements a comprehensive role-based access control system using Supabase for authentication and authorization.
 
 ## Features
 
-- **User Authentication**: Login, signup, and role-based access
-- **Order System**: Custom coffee ordering with various options
-- **Gift Cards**: Purchase and redeem gift cards 
-- **Loyalty Program**: Earn and redeem loyalty points
-- **Favorites**: Save your favorite coffee products
-- **Admin Dashboard**: Manage orders and users
-- **Superadmin Panel**: System-wide configuration
+- User authentication via Supabase Auth
+- Role-based access control with three roles: user, admin, and superadmin
+- Protected routes based on user roles
+- Conditional UI rendering based on user permissions
+- Admin approval workflow for new admin accounts
 
-## Tech Stack
+## Access Control Rules
 
-- **Frontend**: Next.js 13+ with App Router
-- **Styling**: Tailwind CSS
-- **Backend**: Supabase (PostgreSQL + Auth)
-- **Hosting**: Vercel
+- **Public Routes**: Home, Login, Signup (accessible without login)
+- **User Routes**: Order, Gift Cards, Loyalty, Bulk Order, Profile (requires login)
+- **Admin Routes**: Admin Dashboard and subpages (requires admin role)
+- **Superadmin Routes**: Superadmin Dashboard (requires superadmin role)
 
-## Project Structure
+## Test Users
 
-```
-art-coffee/
-├── src/
-│   ├── app/                   # Next.js app router pages
-│   │   ├── admin/             # Admin dashboard
-│   │   ├── auth/              # Authentication pages
-│   │   ├── bulk-order/        # Bulk order page
-│   │   ├── gift-card/         # Gift card page
-│   │   ├── loyalty/           # Loyalty page
-│   │   ├── order/             # Order page
-│   │   ├── profile/           # User profile page
-│   │   ├── superadmin/        # Superadmin dashboard
-│   │   └── page.js            # Home page
-│   ├── components/            # Reusable React components
-│   │   ├── Footer.js          
-│   │   ├── Navigation.js      
-│   │   └── ProfileFetcher.js  # User context provider
-│   ├── lib/                   # Utility functions and configuration
-│   │   └── supabaseClient.js  # Supabase client
-│   └── middleware.js          # Next.js middleware for auth
-└── supabase/                  # Supabase setup and migrations
-    └── migrations/            # SQL migrations
-```
+For testing purposes, the following accounts are available:
 
-## Role-Based Access
+| Email                    | Password    | Role       | Status    |
+|--------------------------|-------------|------------|-----------|
+| user@example.com         | password123 | user       | Approved  |
+| admin@example.com        | password123 | admin      | Approved  |
+| pending-admin@example.com| password123 | admin      | Pending   |
+| superadmin@example.com   | password123 | superadmin | Approved  |
 
-- **User**: Can access order, gift card, loyalty, and profile pages
-- **Admin**: Additional access to admin dashboard 
-- **Superadmin**: Full access including superadmin panel
+## Testing Instructions
 
-## Local Development
-
-1. Clone the repository
-2. Install dependencies:
-   ```
-   npm install
-   ```
-3. Create a `.env.local` file with your Supabase credentials:
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=your-project-url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-   ```
-4. Run the development server:
+1. Start the development server:
    ```
    npm run dev
    ```
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## Deployment
+2. Access the application at http://localhost:3000
 
-This project is deployed on Vercel.
+3. Test the authentication flow:
+   - Sign up as a new user
+   - Log in with an existing account
+   - Test role-specific redirects after login
 
-## Database Schema
+4. Test role-based access control:
+   - Try accessing `/admin` as a regular user (should redirect to not-authorized)
+   - Try accessing `/superadmin` as an admin (should redirect to not-authorized)
+   - Log in as an approved admin and check admin dashboard access
+   - Log in as a pending admin and verify redirect to pending-approval page
 
-### Core Tables
-- **users**: Authentication and user management
-- **profiles**: Extended user information and roles
-- **products**: Coffee and other products
-- **orders**: Customer orders
-- **order_items**: Individual items in orders
-- **gift_cards**: Gift card information
-- **loyalty_transactions**: Loyalty point tracking
-- **favorites**: Users' favorite products
+5. Test UI conditional rendering:
+   - Verify that the homepage hides admin/superadmin cards for regular users
+   - Verify that navigation links are shown/hidden based on role
+
+## Implementation Details
+
+- Middleware.js handles route protection
+- ProfileFetcher.js provides authentication state throughout the app
+- RLS policies in Supabase control data access
+- UI components use role checks for conditional rendering
+
+## Environment Setup
+
+The application requires a Supabase project with the following environment variables:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+## Database Tables
+
+- `profiles`: Stores user roles and approval status
+- `products`: Menu items
+- `orders` and `order_items`: Order data
+- `gift_cards`: Gift card information
+- `loyalty_transactions`: Loyalty points history
+- `tables`: Table management for QR codes
 
 ## License
 

@@ -14,16 +14,24 @@ export default function ProfilePage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [updateStatus, setUpdateStatus] = useState({ message: '', type: '' });
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('account');
   const [favorites, setFavorites] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
-  const { user, profile, loading, error } = useProfile();
+  const { user, profile, loading, error, refreshProfile, signOut } = useProfile();
   const [profileData, setProfileData] = useState({
     name: '',
     email: '',
     role: 'user',
     approved: false,
+  });
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [loyaltyTransactions, setLoyaltyTransactions] = useState([]);
+  const [giftCards, setGiftCards] = useState([]);
+  const [isLoading, setIsLoading] = useState({
+    orders: true,
+    loyalty: true,
+    giftCards: true
   });
 
   // Client-side only code
@@ -170,6 +178,127 @@ export default function ProfilePage() {
     }
   }, [user, profile]);
 
+  // Fetch loyalty points
+  useEffect(() => {
+    async function fetchLoyaltyData() {
+      if (!user) return;
+      
+      try {
+        // Fetch loyalty transactions
+        const { data: transactions, error: transactionsError } = await supabase
+          .from('loyalty_transactions')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        if (transactionsError) throw transactionsError;
+        
+        // Calculate total points
+        let totalPoints = 0;
+        
+        // Use placeholders if no data
+        if (!transactions || transactions.length === 0) {
+          // Create placeholder transactions
+          const placeholderTransactions = [
+            {
+              id: 'placeholder-1',
+              points: 150,
+              transaction_type: 'earn',
+              description: 'Order #123456',
+              created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
+            },
+            {
+              id: 'placeholder-2',
+              points: 75,
+              transaction_type: 'earn',
+              description: 'Order #789012',
+              created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
+            },
+            {
+              id: 'placeholder-3',
+              points: -100,
+              transaction_type: 'redeem',
+              description: 'Free Coffee Reward',
+              created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+            }
+          ];
+          
+          setLoyaltyTransactions(placeholderTransactions);
+          totalPoints = 125; // Placeholder total
+        } else {
+          setLoyaltyTransactions(transactions);
+          
+          // Calculate real total
+          totalPoints = transactions.reduce((sum, transaction) => sum + transaction.points, 0);
+        }
+        
+        setLoyaltyPoints(totalPoints);
+      } catch (error) {
+        console.error('Error fetching loyalty data:', error);
+      } finally {
+        setIsLoading(prev => ({ ...prev, loyalty: false }));
+      }
+    }
+    
+    fetchLoyaltyData();
+  }, [user]);
+
+  // Fetch gift cards
+  useEffect(() => {
+    async function fetchGiftCards() {
+      if (!user) return;
+      
+      try {
+        // Fetch gift cards sent or received
+        const { data, error } = await supabase
+          .from('gift_cards')
+          .select('*')
+          .or(`sender_id.eq.${user.id},recipient_email.eq.${user.email}`)
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
+        
+        // Use placeholders if no data
+        if (!data || data.length === 0) {
+          const placeholderGiftCards = [
+            {
+              id: 'placeholder-1',
+              code: 'GIFT123',
+              amount: 25,
+              balance: 25,
+              sender_id: null,
+              recipient_email: user.email,
+              recipient_name: 'You',
+              is_redeemed: false,
+              created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+            },
+            {
+              id: 'placeholder-2',
+              code: 'SENT456',
+              amount: 15,
+              balance: 0,
+              sender_id: user.id,
+              recipient_email: 'friend@example.com',
+              recipient_name: 'Friend',
+              is_redeemed: true,
+              created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+            }
+          ];
+          
+          setGiftCards(placeholderGiftCards);
+        } else {
+          setGiftCards(data);
+        }
+      } catch (error) {
+        console.error('Error fetching gift cards:', error);
+      } finally {
+        setIsLoading(prev => ({ ...prev, giftCards: false }));
+      }
+    }
+    
+    fetchGiftCards();
+  }, [user]);
+
   const handleRemoveFavorite = async (favoriteId) => {
     try {
       console.log('Removing favorite:', favoriteId);
@@ -214,7 +343,7 @@ export default function ProfilePage() {
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
+      await signOut();
       router.push('/');
     } catch (error) {
       console.error('Error signing out:', error);

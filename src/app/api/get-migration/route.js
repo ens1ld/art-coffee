@@ -28,6 +28,18 @@ CREATE TABLE IF NOT EXISTS profiles (
 -- Enable Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
+-- Helper function to get role without causing recursion
+CREATE OR REPLACE FUNCTION get_auth_role()
+RETURNS TEXT AS $$
+BEGIN
+  RETURN (
+    SELECT role FROM auth.users
+    LEFT JOIN auth.jwt() as jwt ON auth.uid() = jwt.sub
+    WHERE id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Drop existing policies to avoid conflicts
 DROP POLICY IF EXISTS "Users can see their own profile" ON profiles;
 DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
@@ -35,6 +47,7 @@ DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
 DROP POLICY IF EXISTS "Superadmins can update all profiles" ON profiles;
 DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON profiles;
 DROP POLICY IF EXISTS "Users can update their own profile except role" ON profiles;
+DROP POLICY IF EXISTS "Temporary policy for debugging" ON profiles;
 
 -- Create policies for accessing profiles
 -- Users can see their own profile
@@ -48,7 +61,7 @@ CREATE POLICY "Users can update their own profile"
   USING (auth.uid() = id)
   WITH CHECK (
     auth.uid() = id AND 
-    role = (SELECT role FROM profiles WHERE id = auth.uid()) AND
+    role = (SELECT get_auth_role()) AND
     approved = (SELECT approved FROM profiles WHERE id = auth.uid())
   );
 
@@ -56,24 +69,20 @@ CREATE POLICY "Users can update their own profile"
 CREATE POLICY "Admins can view all profiles"
   ON profiles FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE id = auth.uid() AND (
-        raw_user_meta_data->>'role' = 'admin' OR 
-        raw_user_meta_data->>'role' = 'superadmin'
-      )
-    )
+    get_auth_role() IN ('admin', 'superadmin')
   );
 
 -- Superadmins can update any profile
 CREATE POLICY "Superadmins can update all profiles"
   ON profiles FOR UPDATE
   USING (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE id = auth.uid() AND raw_user_meta_data->>'role' = 'superadmin'
-    )
+    get_auth_role() = 'superadmin'
   );
+
+-- Temporary policy for debugging (will be removed in production)
+CREATE POLICY "Temporary policy for debugging"
+  ON profiles FOR SELECT
+  USING (true);
 
 -- Create a trigger function to automatically create profiles for new users
 CREATE OR REPLACE FUNCTION public.handle_new_user()

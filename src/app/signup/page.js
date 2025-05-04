@@ -338,9 +338,11 @@ export default function SignupPage() {
               </div>
               
               <div>
-                <label className="flex items-center">
+                <label className="flex items-center" htmlFor="request_admin">
                   <input
                     type="checkbox"
+                    id="request_admin"
+                    name="request_admin"
                     checked={requestAdminRole}
                     onChange={() => setRequestAdminRole(!requestAdminRole)}
                     className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
