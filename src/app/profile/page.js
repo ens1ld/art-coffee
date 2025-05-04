@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { useProfile } from '@/components/ProfileFetcher';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -35,6 +36,9 @@ export default function ProfilePage() {
     giftCards: true,
     suggestions: true
   });
+  
+  // Get translations
+  const { translations } = useLanguage();
 
   // Client-side only code
   useEffect(() => {
@@ -548,7 +552,7 @@ export default function ProfilePage() {
   };
 
   const getUserRoleDisplay = (profile) => {
-    if (!profile) return 'Loading...';
+    if (!profile) return translations.loading;
     
     switch (profile.role) {
       case 'user':
@@ -595,13 +599,13 @@ export default function ProfilePage() {
         <Navigation />
         <div className="flex-grow flex items-center justify-center p-4">
           <div className="text-center max-w-md mx-auto">
-            <h1 className="text-2xl font-bold text-red-700 mb-4">Profile Error</h1>
+            <h1 className="text-2xl font-bold text-red-700 mb-4">{translations.error}</h1>
             <p className="mb-6 text-red-600">{error}</p>
             <button
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-amber-800 text-white rounded hover:bg-amber-700"
             >
-              Retry
+              {translations.retry}
             </button>
                   </div>
                 </div>
@@ -620,7 +624,7 @@ export default function ProfilePage() {
             <h1 className="text-2xl font-bold text-amber-800 mb-4">Authentication Required</h1>
             <p className="mb-6">Please log in to view your profile.</p>
             <Link href="/login" className="btn-primary">
-              Go to Login
+              {translations.nav_login}
             </Link>
                     </div>
                   </div>
@@ -660,7 +664,7 @@ export default function ProfilePage() {
                     href="/profile" 
                     className="block w-full py-2 text-center rounded-md bg-amber-800 text-white hover:bg-amber-700"
                   >
-                    My Profile
+                    {translations.profile_title}
                   </Link>
                   <Link 
                     onClick={(e) => {
@@ -673,7 +677,7 @@ export default function ProfilePage() {
                     href="#"
                     className="block w-full py-2 text-center rounded-md border border-amber-800 text-amber-800 hover:bg-amber-50"
                   >
-                    My Orders
+                    {translations.profile_orders}
                   </Link>
                   
                   {/* Admin/Superadmin Links */}
@@ -682,7 +686,7 @@ export default function ProfilePage() {
                       href="/admin" 
                       className="block w-full py-2 text-center rounded-md border border-amber-800 text-amber-800 hover:bg-amber-50"
                     >
-                      Admin Dashboard
+                      {translations.nav_admin}
                     </Link>
                   ) : null}
                   
@@ -691,7 +695,7 @@ export default function ProfilePage() {
                       href="/superadmin" 
                       className="block w-full py-2 text-center rounded-md border border-amber-800 text-amber-800 hover:bg-amber-50"
                     >
-                      Superadmin Dashboard
+                      {translations.nav_superadmin}
                     </Link>
                   )}
                   
@@ -699,8 +703,8 @@ export default function ProfilePage() {
                     onClick={handleSignOut}
                     className="block w-full py-2 text-center rounded-md border border-red-500 text-red-500 hover:bg-red-50"
                   >
-                    Sign Out
-                      </button>
+                    {translations.nav_sign_out}
+                  </button>
                 </div>
               </div>
             </div>
@@ -708,30 +712,30 @@ export default function ProfilePage() {
             {/* Main Content */}
             <div className="w-full md:w-2/3">
               <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h2 className="text-xl font-bold text-amber-900 mb-4">Account Information</h2>
+                <h2 className="text-xl font-bold text-amber-900 mb-4">{translations.profile_account_info}</h2>
                 
                 <div className="mb-4">
-                  <p className="text-gray-600 mb-1">Full Name</p>
+                  <p className="text-gray-600 mb-1">{translations.profile_full_name}</p>
                   <p className="font-medium">{profileData.name || 'Not provided'}</p>
                 </div>
                 
                 <div className="mb-4">
-                  <p className="text-gray-600 mb-1">Email Address</p>
+                  <p className="text-gray-600 mb-1">{translations.profile_email}</p>
                   <p className="font-medium">{profileData.email}</p>
                 </div>
                 
                 <div className="mb-4">
-                  <p className="text-gray-600 mb-1">Account Type</p>
+                  <p className="text-gray-600 mb-1">{translations.profile_account_type}</p>
                   <p className="font-medium capitalize">{profileData.role || 'User'}</p>
                   {profileData.role === 'admin' && !profileData.approved && (
                     <p className="text-amber-600 text-sm mt-1">
-                      Your admin account is pending approval. You will be notified when it&apos;s approved.
+                      {translations.profile_pending_approval}
                     </p>
                   )}
           </div>
                 
                 <div className="mb-4">
-                  <p className="text-gray-600 mb-1">Member Since</p>
+                  <p className="text-gray-600 mb-1">{translations.profile_member_since}</p>
                   <p className="font-medium">
                     {user.created_at 
                       ? new Date(user.created_at).toLocaleDateString() 
@@ -742,7 +746,7 @@ export default function ProfilePage() {
               
               {/* My Orders Section */}
               <div className="bg-white rounded-lg shadow-md p-6 mb-6" data-section="orders">
-                <h2 className="text-xl font-bold text-amber-900 mb-4">My Orders</h2>
+                <h2 className="text-xl font-bold text-amber-900 mb-4">{translations.profile_orders}</h2>
                 
                 {(() => {
                   // Try to get orders from localStorage first
@@ -775,7 +779,7 @@ export default function ProfilePage() {
                             </div>
                             
                             <div className="mt-2">
-                              <h4 className="text-sm font-medium text-gray-700 mb-1">Items:</h4>
+                              <h4 className="text-sm font-medium text-gray-700 mb-1">{translations.profile_order_items}</h4>
                               <ul className="text-sm text-gray-600 space-y-1">
                                 {order.items.map((item, itemIndex) => (
                                   <li key={itemIndex} className="flex justify-between">
@@ -787,26 +791,26 @@ export default function ProfilePage() {
                             </div>
                             
                             <div className="mt-3 flex justify-between border-t border-gray-100 pt-2">
-                              <span className="text-gray-600">Total:</span>
+                              <span className="text-gray-600">{translations.profile_total}</span>
                               <span className="font-bold text-amber-900">€{order.total.toFixed(2)}</span>
                             </div>
                             
                             {order.notes && (
                               <div className="mt-2 text-sm text-gray-600">
-                                <span className="font-medium">Notes:</span> {order.notes}
-                              </div>
-                            )}
+                                <span className="font-medium">{translations.profile_notes}</span> {order.notes}
+              </div>
+            )}
                           </div>
                         ))}
-                      </div>
-                    );
+          </div>
+        );
                   } else if (orders.length > 0) {
-                    return (
+        return (
                       <div className="space-y-4">
                         {orders.map((order) => (
                           <div key={order.id} className="border border-gray-200 rounded-lg p-4">
                             <div className="flex justify-between items-center mb-2">
-                              <div>
+          <div>
                                 <span className="font-medium text-amber-900">
                                   Order #{order.id.toString().substring(0, 8)}
                                 </span>
@@ -824,7 +828,7 @@ export default function ProfilePage() {
                             </div>
                             
                             <div className="mt-2">
-                              <h4 className="text-sm font-medium text-gray-700 mb-1">Items:</h4>
+                              <h4 className="text-sm font-medium text-gray-700 mb-1">{translations.profile_order_items}</h4>
                               <ul className="text-sm text-gray-600 space-y-1">
                                 {order.order_items && order.order_items.length > 0 ? (
                                   order.order_items.map((item, index) => (
@@ -840,15 +844,15 @@ export default function ProfilePage() {
                             </div>
                             
                             <div className="mt-3 flex justify-between border-t border-gray-100 pt-2">
-                              <span className="text-gray-600">Total:</span>
+                              <span className="text-gray-600">{translations.profile_total}</span>
                               <span className="font-bold text-amber-900">€{order.total.toFixed(2)}</span>
                             </div>
                             
                             {order.notes && (
                               <div className="mt-2 text-sm text-gray-600">
-                                <span className="font-medium">Notes:</span> {order.notes}
-                              </div>
-                            )}
+                                <span className="font-medium">{translations.profile_notes}</span> {order.notes}
+              </div>
+            )}
                           </div>
                         ))}
                       </div>
@@ -856,12 +860,12 @@ export default function ProfilePage() {
                   } else {
                     return (
                       <div className="text-center py-8">
-                        <p className="text-gray-500 mb-4">You haven&apos;t placed any orders yet.</p>
+                        <p className="text-gray-500 mb-4">{translations.profile_no_orders}</p>
                         <Link 
                           href="/order" 
                           className="inline-block px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700"
                         >
-                          Browse Menu
+                          {translations.profile_browse_menu}
                         </Link>
                       </div>
                     );
@@ -871,18 +875,18 @@ export default function ProfilePage() {
               
               {/* Access Information */}
               <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h2 className="text-xl font-bold text-amber-900 mb-4">Access Information</h2>
+                <h2 className="text-xl font-bold text-amber-900 mb-4">{translations.access_info}</h2>
                 
                 {profileData.role === 'user' && (
                   <div className="mb-4">
                     <p className="mb-2">
-                      You currently have regular user access which allows you to:
+                      {translations.access_user}
                     </p>
                     <ul className="list-disc pl-5 space-y-1 text-gray-600">
-                      <li>Place coffee orders</li>
-                      <li>Purchase gift cards</li>
-                      <li>Participate in our loyalty program</li>
-                      <li>View your order history</li>
+                      <li>{translations.access_user_p1}</li>
+                      <li>{translations.access_user_p2}</li>
+                      <li>{translations.access_user_p3}</li>
+                      <li>{translations.access_user_p4}</li>
                     </ul>
               </div>
             )}
@@ -891,14 +895,14 @@ export default function ProfilePage() {
                   <div className="mb-4">
                     <p className="mb-2">
                       {profileData.approved 
-                        ? 'You have admin access which allows you to:' 
-                        : 'Once approved, you will have admin access to:'}
+                        ? translations.access_admin_approved 
+                        : translations.access_admin_pending}
                     </p>
                     <ul className="list-disc pl-5 space-y-1 text-gray-600">
-                      <li>View all customer orders</li>
-                      <li>Manage products and inventory</li>
-                      <li>View loyalty program analytics</li>
-                      <li>Access the admin dashboard</li>
+                      <li>{translations.access_admin_p1}</li>
+                      <li>{translations.access_admin_p2}</li>
+                      <li>{translations.access_admin_p3}</li>
+                      <li>{translations.access_admin_p4}</li>
                     </ul>
           </div>
                 )}
@@ -906,14 +910,14 @@ export default function ProfilePage() {
                 {profileData.role === 'superadmin' && (
                   <div className="mb-4">
                     <p className="mb-2">
-                      You have superadmin access which allows you to:
+                      {translations.access_superadmin}
                     </p>
                     <ul className="list-disc pl-5 space-y-1 text-gray-600">
-                      <li>Manage all user accounts</li>
-                      <li>Approve admin account requests</li>
-                      <li>Access all system settings</li>
-                      <li>View all admin and customer data</li>
-                      <li>Complete access to the admin dashboard</li>
+                      <li>{translations.access_superadmin_p1}</li>
+                      <li>{translations.access_superadmin_p2}</li>
+                      <li>{translations.access_superadmin_p3}</li>
+                      <li>{translations.access_superadmin_p4}</li>
+                      <li>{translations.access_superadmin_p5}</li>
                     </ul>
               </div>
             )}
@@ -921,16 +925,16 @@ export default function ProfilePage() {
                 {profileData.role === 'user' && (
                   <div className="mt-4 p-4 bg-amber-50 rounded-md">
                     <p className="text-amber-800 font-medium mb-2">
-                      Want to become an admin?
+                      {translations.become_admin}
                     </p>
                     <p className="text-gray-600 mb-4">
-                      If you&apos;d like to request admin access, please contact us or create a new account with admin privileges.
+                      {translations.become_admin_p1}
                     </p>
                     <Link 
                       href="/contact" 
                       className="inline-block px-4 py-2 rounded-md bg-amber-800 text-white hover:bg-amber-700"
                     >
-                      Contact Us
+                      {translations.contact_us}
                     </Link>
                   </div>
                 )}
@@ -940,17 +944,17 @@ export default function ProfilePage() {
               {suggestedProducts.length > 0 && (
                 <div className="bg-white rounded-lg shadow-md p-6 mb-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-amber-900">Recommended For You</h2>
+                    <h2 className="text-xl font-bold text-amber-900">{translations.recommendations}</h2>
                     <Link 
                       href="/order" 
                       className="text-amber-800 hover:text-amber-600 text-sm font-medium"
                     >
-                      View All Products
+                      {translations.view_all_products}
                     </Link>
             </div>
                   
                   <p className="text-gray-600 mb-4">
-                    Based on your order history and browsing habits, we think you might like:
+                    {translations.based_on_history}
                   </p>
                   
                   {isLoading.suggestions ? (
@@ -982,7 +986,7 @@ export default function ProfilePage() {
                             
                             {product.is_new && (
                               <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-md text-xs font-bold">
-                                NEW
+                                {translations.new}
                               </div>
                             )}
                           </div>
@@ -999,7 +1003,7 @@ export default function ProfilePage() {
                   
                   <div className="mt-4 p-3 bg-amber-50 rounded-md text-sm">
                     <p className="text-amber-800">
-                      <span className="font-medium">Pro tip:</span> We update these recommendations based on your ordering habits and preferences to help you discover new favorites.
+                      <span className="font-medium">{translations.pro_tip}</span> {translations.recommendation_tip}
                     </p>
                   </div>
                       </div>

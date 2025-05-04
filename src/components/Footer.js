@@ -1,9 +1,11 @@
 'use client';
 import Link from 'next/link';
 import Logo from './Logo';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const { translations } = useLanguage();
 
   return (
     <footer className="bg-[#F9F5F0] border-t border-border pt-12 pb-6">
@@ -34,52 +36,52 @@ export default function Footer() {
           </div>
           
           <div>
-            <h3 className="font-semibold text-lg text-primary mb-4">Quick Links</h3>
+            <h3 className="font-semibold text-lg text-primary mb-4">{translations.quick_links || 'Quick Links'}</h3>
             <ul className="space-y-3">
               <li>
                 <Link href="/order" className="text-text-secondary hover:text-primary transition-colors">
-                  Order Coffee
+                  {translations.nav_order}
                 </Link>
               </li>
               <li>
                 <Link href="/loyalty" className="text-text-secondary hover:text-primary transition-colors">
-                  Loyalty Program
+                  {translations.nav_loyalty}
                 </Link>
               </li>
               <li>
                 <Link href="/gift-card" className="text-text-secondary hover:text-primary transition-colors">
-                  Gift Cards
+                  {translations.nav_gift_cards}
                 </Link>
               </li>
               <li>
                 <Link href="/bulk-order" className="text-text-secondary hover:text-primary transition-colors">
-                  Bulk Orders
+                  {translations.nav_bulk_order}
                 </Link>
               </li>
             </ul>
           </div>
           
           <div>
-            <h3 className="font-semibold text-lg text-primary mb-4">About Us</h3>
+            <h3 className="font-semibold text-lg text-primary mb-4">{translations.about_us || 'About Us'}</h3>
             <ul className="space-y-3">
               <li>
                 <Link href="/about" className="text-text-secondary hover:text-primary transition-colors">
-                  Our Story
+                  {translations.our_story || 'Our Story'}
                 </Link>
               </li>
               <li>
                 <Link href="/about#team" className="text-text-secondary hover:text-primary transition-colors">
-                  Our Team
+                  {translations.our_team || 'Our Team'}
                 </Link>
               </li>
               <li>
                 <Link href="/about#values" className="text-text-secondary hover:text-primary transition-colors">
-                  Our Values
+                  {translations.our_values || 'Our Values'}
                 </Link>
               </li>
               <li>
                 <Link href="/contact" className="text-text-secondary hover:text-primary transition-colors">
-                  Contact Us
+                  {translations.contact_us}
                 </Link>
               </li>
             </ul>
@@ -87,7 +89,7 @@ export default function Footer() {
       
            
           <div>
-            <h3 className="font-semibold text-lg text-primary mb-4">Contact</h3>
+            <h3 className="font-semibold text-lg text-primary mb-4">{translations.contact || 'Contact'}</h3>
             <address className="not-italic">
               <p className="text-text-secondary mb-2">Lagja Emin Matraxhiu</p>
               <p className="text-text-secondary mb-2">Elbasan, Albania 3001</p>
@@ -107,14 +109,14 @@ export default function Footer() {
         <div className="border-t border-border pt-6 text-center">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-text-light text-sm mb-4 md:mb-0">
-              &copy; {currentYear} Art Coffee. All rights reserved.
+              &copy; {currentYear} Art Coffee. {translations.all_rights_reserved || 'All rights reserved.'}
             </p>
             <div className="flex gap-4 text-sm">
               <Link href="/terms" className="text-text-light hover:text-primary transition-colors">
-                Terms &amp; Conditions
+                {translations.terms || 'Terms & Conditions'}
               </Link>
               <Link href="/privacy" className="text-text-light hover:text-primary transition-colors">
-                Privacy Policy
+                {translations.privacy || 'Privacy Policy'}
               </Link>
             </div>
           </div>

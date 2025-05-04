@@ -1,0 +1,3 @@
+@echo off
+echo Starting Art Coffee development server...
+npm run dev 

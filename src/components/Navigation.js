@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useProfile } from '@/components/ProfileFetcher';
+import { useLanguage } from '@/context/LanguageContext';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -17,6 +19,9 @@ export default function Navigation() {
   const loading = profileContext?.loading || false;
   const isAdmin = profileContext?.isAdmin || false;
   const isSuperadmin = profileContext?.isSuperadmin || false;
+  
+  // Get translations
+  const { translations } = useLanguage();
   
   const pathname = usePathname();
   
@@ -73,23 +78,23 @@ export default function Navigation() {
         {/* Desktop Navigation - always visible for all users */}
         <nav className="hidden md:flex space-x-6">
           <Link href="/" className={`text-amber-900 hover:text-amber-700 ${isActive('/') ? 'font-semibold' : ''}`}>
-            Home
+            {translations.nav_home}
           </Link>
           
           {/* User routes available to all authenticated users */}
           {mounted && user && (
             <>
               <Link href="/order" className={`text-amber-900 hover:text-amber-700 ${isActive('/order') ? 'font-semibold' : ''}`}>
-                Order
+                {translations.nav_order}
               </Link>
               <Link href="/loyalty" className={`text-amber-900 hover:text-amber-700 ${isActive('/loyalty') ? 'font-semibold' : ''}`}>
-                Loyalty
+                {translations.nav_loyalty}
               </Link>
               <Link href="/gift-card" className={`text-amber-900 hover:text-amber-700 ${isActive('/gift-card') ? 'font-semibold' : ''}`}>
-                Gift Cards
+                {translations.nav_gift_cards}
               </Link>
               <Link href="/bulk-order" className={`text-amber-900 hover:text-amber-700 ${isActive('/bulk-order') ? 'font-semibold' : ''}`}>
-                Bulk Order
+                {translations.nav_bulk_order}
               </Link>
             </>
           )}
@@ -100,7 +105,7 @@ export default function Navigation() {
               href="/admin" 
               className={`text-amber-900 hover:text-amber-700 ${isActive('/admin') ? 'font-semibold' : ''}`}
             >
-              Admin
+              {translations.nav_admin}
             </Link>
           )}
           
@@ -110,26 +115,29 @@ export default function Navigation() {
               href="/superadmin" 
               className={`text-amber-900 hover:text-amber-700 ${isActive('/superadmin') ? 'font-semibold' : ''}`}
             >
-              Superadmin
+              {translations.nav_superadmin}
             </Link>
           )}
         </nav>
 
-        {/* Authentication Button */}
-        <div className="hidden md:block">
+        {/* Authentication Button and Language Switcher */}
+        <div className="hidden md:flex items-center space-x-3">
+          {/* Language Switcher */}
+          <LanguageSwitcher />
+          
           {mounted && user ? (
             <div className="flex items-center space-x-2">
               <Link 
                 href="/profile" 
                 className={`text-amber-900 hover:text-amber-700 mr-2 ${isActive('/profile') ? 'font-semibold' : ''}`}
               >
-                My Profile
+                {translations.nav_profile}
               </Link>
               <button
                 onClick={handleSignOut}
                 className="px-4 py-2 border border-amber-800 text-amber-900 rounded-md hover:bg-amber-800 hover:text-white transition-colors"
               >
-                Sign Out
+                {translations.nav_sign_out}
               </button>
             </div>
           ) : (
@@ -137,21 +145,24 @@ export default function Navigation() {
               href="/login"
               className="px-4 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition-colors"
             >
-              Login / Sign Up
+              {translations.nav_login}
             </Link>
           )}
         </div>
 
         {/* Mobile Menu Button */}
-        <button
-          className="md:hidden text-amber-900"
-          onClick={toggleMobileMenu}
-          aria-label="Toggle menu"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
+        <div className="md:hidden flex items-center space-x-1">
+          <LanguageSwitcher />
+          <button
+            className="text-amber-900"
+            onClick={toggleMobileMenu}
+            aria-label="Toggle menu"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu - always shows basic navigation */}
@@ -159,23 +170,23 @@ export default function Navigation() {
         <div className="md:hidden bg-amber-50 py-4 border-t border-amber-200">
           <div className="container mx-auto px-4 flex flex-col space-y-3">
             <Link href="/" className={`text-amber-900 hover:text-amber-700 ${isActive('/') ? 'font-semibold' : ''}`}>
-              Home
+              {translations.nav_home}
             </Link>
             
             {/* Only show user routes if authenticated */}
             {mounted && user && (
               <>
                 <Link href="/order" className={`text-amber-900 hover:text-amber-700 ${isActive('/order') ? 'font-semibold' : ''}`}>
-                  Order
+                  {translations.nav_order}
                 </Link>
                 <Link href="/loyalty" className={`text-amber-900 hover:text-amber-700 ${isActive('/loyalty') ? 'font-semibold' : ''}`}>
-                  Loyalty
+                  {translations.nav_loyalty}
                 </Link>
                 <Link href="/gift-card" className={`text-amber-900 hover:text-amber-700 ${isActive('/gift-card') ? 'font-semibold' : ''}`}>
-                  Gift Cards
+                  {translations.nav_gift_cards}
                 </Link>
                 <Link href="/bulk-order" className={`text-amber-900 hover:text-amber-700 ${isActive('/bulk-order') ? 'font-semibold' : ''}`}>
-                  Bulk Order
+                  {translations.nav_bulk_order}
                 </Link>
               </>
             )}
@@ -186,7 +197,7 @@ export default function Navigation() {
                 href="/admin" 
                 className={`text-amber-900 hover:text-amber-700 ${isActive('/admin') ? 'font-semibold' : ''}`}
               >
-                Admin
+                {translations.nav_admin}
               </Link>
             )}
             
@@ -196,7 +207,7 @@ export default function Navigation() {
                 href="/superadmin" 
                 className={`text-amber-900 hover:text-amber-700 ${isActive('/superadmin') ? 'font-semibold' : ''}`}
               >
-                Superadmin
+                {translations.nav_superadmin}
               </Link>
             )}
             
@@ -206,18 +217,18 @@ export default function Navigation() {
                   href="/profile" 
                   className={`text-amber-900 hover:text-amber-700 ${isActive('/profile') ? 'font-semibold' : ''}`}
                 >
-                  My Profile
+                  {translations.nav_profile}
                 </Link>
                 <button
                   onClick={handleSignOut}
                   className="text-left text-amber-900 hover:text-amber-700"
                 >
-                  Sign Out
+                  {translations.nav_sign_out}
                 </button>
               </>
             ) : (
               <Link href="/login" className="text-amber-900 hover:text-amber-700">
-                Login / Sign Up
+                {translations.nav_login}
               </Link>
             )}
           </div>

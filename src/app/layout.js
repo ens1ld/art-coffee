@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientProfileProvider from "@/components/ClientProfileProvider";
+import ClientLanguageProvider from "@/components/ClientLanguageProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,7 +26,9 @@ export default function RootLayout({ children }) {
         suppressHydrationWarning
       >
         <ClientProfileProvider>
-          {children}
+          <ClientLanguageProvider>
+            {children}
+          </ClientLanguageProvider>
         </ClientProfileProvider>
       </body>
     </html>

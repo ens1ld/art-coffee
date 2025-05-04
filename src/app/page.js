@@ -5,10 +5,12 @@ import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { useProfile } from '@/components/ProfileFetcher';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function HomePage() {
   const { user, profile, isAdmin, isSuperadmin, loading } = useProfile();
   const [mounted, setMounted] = useState(false);
+  const { translations } = useLanguage();
   
   // Set mounted state to true after component mounts (client side only)
   useEffect(() => {
@@ -25,41 +27,41 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
             <div>
               <h1 className="heading-1 mb-6">
-                Experience Artisanal Coffee at Its Finest
+                {translations.home_hero_title}
               </h1>
               <p className="paragraph mb-8">
-                At Art Coffee, we craft each cup with passion and precision, using only the finest beans sourced from around the world. Discover flavors that tell a story.
+                {translations.home_hero_desc}
               </p>
               <div className="flex flex-wrap gap-4">
                 {/* User not logged in - show order and menu links */}
                 {!mounted || !user ? (
                   <>
                     <Link href="/order" className="btn-primary">
-                      Start Your Order
+                      {translations.home_start_order}
                     </Link>
                     <Link href="/menu" className="btn-secondary">
-                      View Menu
+                      {translations.home_view_menu}
                     </Link>
                   </>
                 ) : (
                   <>
                     {/* User logged in - show relevant links based on role */}
                     <Link href="/order" className="btn-primary">
-                      Start Your Order
+                      {translations.home_start_order}
                     </Link>
                     <Link href="/profile" className="btn-secondary">
-                      My Profile
+                      {translations.home_my_profile}
                     </Link>
                     
                     {/* Admin and Superadmin links */}
                     {isAdmin && (
                       <Link href="/admin" className="btn-primary">
-                        Go to Admin Dashboard
+                        {translations.home_go_admin}
                       </Link>
                     )}
                     {isSuperadmin && (
                       <Link href="/superadmin" className="btn-secondary">
-                        Go to Superadmin Panel
+                        {translations.home_go_superadmin}
                       </Link>
                     )}
                   </>
@@ -88,10 +90,10 @@ export default function HomePage() {
         <div className="container-custom">
           <div className="text-center mb-16">
             <h2 className="heading-2 mb-4">
-              Why Choose Art Coffee
+              {translations.home_why_choose}
             </h2>
             <p className="paragraph max-w-3xl mx-auto">
-              Discover what makes our coffee experience unique and why our customers keep coming back for more.
+              {translations.home_why_desc}
             </p>
           </div>
           
@@ -102,9 +104,9 @@ export default function HomePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-serif font-semibold text-primary mb-3">Premium Quality</h3>
+              <h3 className="text-xl font-serif font-semibold text-primary mb-3">{translations.home_premium_quality}</h3>
               <p className="text-text-secondary">
-                We select only the highest-quality beans, expertly roasted to bring out their unique flavors.
+                {translations.home_premium_desc}
               </p>
             </div>
             
@@ -114,9 +116,9 @@ export default function HomePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
                 </svg>
               </div>
-              <h3 className="text-xl font-serif font-semibold text-primary mb-3">Personalized Orders</h3>
+              <h3 className="text-xl font-serif font-semibold text-primary mb-3">{translations.home_personalized}</h3>
               <p className="text-text-secondary">
-                Customize your coffee just the way you like it. We craft each cup to match your preferences.
+                {translations.home_personalized_desc}
               </p>
             </div>
             
@@ -126,9 +128,9 @@ export default function HomePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-serif font-semibold text-primary mb-3">Loyalty Rewards</h3>
+              <h3 className="text-xl font-serif font-semibold text-primary mb-3">{translations.home_loyalty}</h3>
               <p className="text-text-secondary">
-                Earn points with every purchase and enjoy special rewards to enhance your coffee experience.
+                {translations.home_loyalty_desc}
               </p>
             </div>
           </div>
@@ -140,10 +142,10 @@ export default function HomePage() {
         <div className="container-custom">
           <div className="text-center mb-16">
             <h2 className="heading-2 mb-4">
-              Our Services
+              {translations.home_services}
             </h2>
             <p className="paragraph max-w-3xl mx-auto">
-              Explore our range of services designed to make your coffee experience exceptional.
+              {translations.home_services_desc}
             </p>
           </div>
           
@@ -158,12 +160,12 @@ export default function HomePage() {
                   className="object-cover"
                 />
               </div>
-              <h3 className="text-xl font-serif font-semibold text-primary mb-3">Customize Your Order</h3>
+              <h3 className="text-xl font-serif font-semibold text-primary mb-3">{translations.home_customize}</h3>
               <p className="text-text-secondary mb-6 flex-grow">
-                Create your perfect cup with our wide range of customization options. Choose your beans, brewing method, and add-ons.
+                {translations.home_customize_desc}
               </p>
               <Link href="/order" className="btn-outline w-full text-center">
-                Order Now
+                {translations.home_order_now}
               </Link>
             </div>
             
@@ -176,12 +178,12 @@ export default function HomePage() {
                   className="object-cover"
                 />
               </div>
-              <h3 className="text-xl font-serif font-semibold text-primary mb-3">Send a Gift Card</h3>
+              <h3 className="text-xl font-serif font-semibold text-primary mb-3">{translations.home_gift_card}</h3>
               <p className="text-text-secondary mb-6 flex-grow">
-                Share the gift of exceptional coffee with friends and family. Personalize your gift card with a custom message.
+                {translations.home_gift_desc}
               </p>
               <Link href="/gift-card" className="btn-outline w-full text-center">
-                Send Gift Card
+                {translations.home_send_gift}
               </Link>
             </div>
             
@@ -194,169 +196,101 @@ export default function HomePage() {
                   className="object-cover"
                 />
               </div>
-              <h3 className="text-xl font-serif font-semibold text-primary mb-3">Earn Loyalty Points</h3>
+              <h3 className="text-xl font-serif font-semibold text-primary mb-3">{translations.home_earn_points}</h3>
               <p className="text-text-secondary mb-6 flex-grow">
-                Join our loyalty program and earn points with every purchase. Redeem for free drinks, special offers, and more.
+                {translations.home_earn_desc}
               </p>
               <Link href="/loyalty" className="btn-outline w-full text-center">
-                Join Loyalty Program
+                {translations.home_view_loyalty}
               </Link>
             </div>
             
-            <div className="card h-full flex flex-col">
+            {/* Added fourth service card for Bulk Orders */}
+            <div className="card h-full flex flex-col lg:col-span-3">
               <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
-                <Image
+                <Image 
                   src="/images/cards/3.png" 
                   alt="Bulk Orders"
                   fill
                   className="object-cover"
                 />
               </div>
-              <h3 className="text-xl font-serif font-semibold text-primary mb-3">Bulk Orders</h3>
+              <h3 className="text-xl font-serif font-semibold text-primary mb-3">{translations.home_bulk_order}</h3>
               <p className="text-text-secondary mb-6 flex-grow">
-                Perfect for events, office meetings, or large gatherings. Place bulk orders with special discounts.
+                {translations.home_bulk_desc}
               </p>
               <Link href="/bulk-order" className="btn-outline w-full text-center">
-                Place Bulk Order
+                {translations.home_place_bulk}
               </Link>
             </div>
-            
-            {/* Admin card - only shown to admins and superadmins */}
-            {mounted && isAdmin && (
-              <div className="card h-full flex flex-col">
-                <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
-                  <Image 
-                    src="/images/admin.png" 
-                    alt="Admin Dashboard"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <h3 className="text-xl font-serif font-semibold text-primary mb-3">Admin Dashboard</h3>
-                <p className="text-text-secondary mb-6 flex-grow">
-                  Manage orders, view analytics, and handle customer data through our comprehensive admin interface.
-                </p>
-                <Link href="/admin" className="btn-outline w-full text-center">
-                  Access Admin
-                </Link>
-              </div>
-            )}
-            
-            {/* Superadmin card - only shown to superadmins */}
-            {mounted && isSuperadmin && (
-              <div className="card h-full flex flex-col">
-                <div className="rounded-xl bg-primary/10 h-48 mb-6 relative overflow-hidden">
-                  <Image 
-                    src="/images/superadmin.png" 
-                    alt="Superadmin Panel"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <h3 className="text-xl font-serif font-semibold text-primary mb-3">Superadmin Panel</h3>
-                <p className="text-text-secondary mb-6 flex-grow">
-                  Full system access to manage users, roles, and application settings.
-                </p>
-                <Link href="/superadmin" className="btn-outline w-full text-center">
-                  Access Superadmin
-                </Link>
-              </div>
-            )}
           </div>
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="py-20">
-        <div className="container-custom">
-          <div className="text-center mb-16">
-            <h2 className="heading-2 mb-4">
-              What Our Customers Say
-            </h2>
-            <p className="paragraph max-w-3xl mx-auto">
-              Don&apos;t just take our word for it. Hear from our happy customers.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="card">
-              <div className="flex items-center gap-2 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <svg key={i} className="w-5 h-5 text-accent" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-              <p className="text-text-secondary italic mb-6">
-                &quot;Art Coffee has become my daily ritual. The quality is unmatched, and the customization options let me experiment with new flavors.&quot;
+      {/* Admin and Superadmin Sections - Only visible to those with access */}
+      {mounted && (isAdmin || isSuperadmin) && (
+        <section className="py-20">
+          <div className="container-custom">
+            <div className="text-center mb-16">
+              <h2 className="heading-2 mb-4">
+                {isAdmin && translations.nav_admin}
+                {!isAdmin && isSuperadmin && translations.nav_superadmin}
+                {(isAdmin && isSuperadmin) && `${translations.nav_admin} & ${translations.nav_superadmin}`}
+              </h2>
+              <p className="paragraph max-w-3xl mx-auto">
+                {isAdmin && isSuperadmin 
+                  ? 'Access your admin and superadmin dashboards to manage the system.' 
+                  : isAdmin 
+                    ? 'Access the admin dashboard to manage orders, products, and view analytics.' 
+                    : 'Access the superadmin panel to manage users, settings, and system configuration.'}
               </p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/20"></div>
-                <div>
-                  <p className="font-medium text-primary">Sarah Johnson</p>
-                  <p className="text-sm text-text-light">Regular Customer</p>
-                </div>
-              </div>
             </div>
             
-            <div className="card">
-              <div className="flex items-center gap-2 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <svg key={i} className="w-5 h-5 text-accent" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-              <p className="text-text-secondary italic mb-6">
-                &quot;The loyalty program is fantastic! I&apos;ve earned free coffees and exclusive offers. Plus, the mobile ordering makes my morning commute so much easier.&quot;
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/20"></div>
-                <div>
-                  <p className="font-medium text-primary">Michael Chen</p>
-                  <p className="text-sm text-text-light">Loyalty Member</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {isAdmin && (
+                <div className="card h-full flex flex-col">
+                  <div className="rounded-xl bg-amber-100 h-48 mb-6 relative overflow-hidden">
+                    <Image 
+                      src="/images/admin-dash.jpg" 
+                      alt="Admin Dashboard"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <h3 className="text-xl font-serif font-semibold text-primary mb-3">{translations.nav_admin}</h3>
+                  <p className="text-text-secondary mb-6 flex-grow">
+                    Manage orders, update menu items, view analytics, and handle day-to-day operations.
+                  </p>
+                  <Link href="/admin" className="btn-primary w-full text-center">
+                    {translations.home_go_admin}
+                  </Link>
                 </div>
-              </div>
-            </div>
-            
-            <div className="card">
-              <div className="flex items-center gap-2 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <svg key={i} className="w-5 h-5 text-accent" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-              <p className="text-text-secondary italic mb-6">
-                &quot;I ordered gift cards for my team, and everyone was thrilled. The personalization options made each card special, and the coffee quality exceeded expectations.&quot;
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/20"></div>
-                <div>
-                  <p className="font-medium text-primary">Emma Rodriguez</p>
-                  <p className="text-sm text-text-light">Business Customer</p>
+              )}
+              
+              {isSuperadmin && (
+                <div className="card h-full flex flex-col">
+                  <div className="rounded-xl bg-amber-100 h-48 mb-6 relative overflow-hidden">
+                    <Image 
+                      src="/images/superadmin-dash.jpg" 
+                      alt="Superadmin Dashboard"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <h3 className="text-xl font-serif font-semibold text-primary mb-3">{translations.nav_superadmin}</h3>
+                  <p className="text-text-secondary mb-6 flex-grow">
+                    Manage user accounts, system settings, approve admin requests, and oversee all system data.
+                  </p>
+                  <Link href="/superadmin" className="btn-primary w-full text-center">
+                    {translations.home_go_superadmin}
+                  </Link>
                 </div>
-              </div>
+              )}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Call to Action */}
-      <section className="py-20 bg-primary text-white">
-        <div className="container-custom text-center">
-          <h2 className="text-4xl md:text-5xl font-serif font-bold mb-6">
-            Ready to Experience Art Coffee?
-          </h2>
-          <p className="text-lg md:text-xl opacity-90 max-w-2xl mx-auto mb-8">
-            Start your coffee journey today and discover why our customers keep coming back.
-          </p>
-          <Link href="/order" className="inline-block bg-white text-primary font-medium py-3 px-8 rounded-button shadow-md hover:shadow-lg transition-all hover:bg-gray-100">
-            Start Your Order
-          </Link>
-        </div>
-      </section>
-
+        </section>
+      )}
+      
       <Footer />
     </div>
   );

@@ -6,8 +6,9 @@ import { useProfile } from '@/components/ProfileFetcher';
 import { supabase } from '@/lib/supabaseClient';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import { useLanguage } from '@/context/LanguageContext';
 
-// Menu categories
+// Menu categories with translations - defined inside component to access translations
 const CATEGORIES = [
   { id: 'coffee', name: 'Coffee', icon: '☕' },
   { id: 'tea', name: 'Tea', icon: '🍵' },
@@ -20,6 +21,7 @@ const CATEGORIES = [
 export default function OrderPage() {
   const { user, profile } = useProfile();
   const router = useRouter();
+  const { translations } = useLanguage();
   
   // State for menu and cart
   const [menuItems, setMenuItems] = useState([]);
@@ -521,478 +523,374 @@ export default function OrderPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navigation />
-
+      
       <main className="flex-grow container mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-amber-900">Order Menu</h1>
-            <p className="text-gray-600">Browse our menu and place your order</p>
-          </div>
-          
-          {scannedTable && (
-            <div className="mt-2 md:mt-0 bg-amber-100 rounded-lg px-4 py-2">
-              <span className="font-medium text-amber-800">Table #{scannedTable}</span>
-          </div>
-        )}
-
-                  <button 
-            onClick={() => setShowCart(true)}
-            className="mt-4 md:mt-0 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium bg-amber-800 text-white hover:bg-amber-700"
-                  >
-            <span className="mr-2">{cart.length}</span>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3z" />
-            </svg>
-                  </button>
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Menu Section - 2/3 width on larger screens */}
+          <div className="w-full md:w-2/3">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h1 className="text-2xl font-semibold text-gray-800 mb-6">{translations.order_menu}</h1>
+              <p className="text-gray-600 mb-6">{translations.browse_menu}</p>
+              
+              {/* Category Filter + Table Info */}
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <div className="flex-1">
+                  <div className="flex overflow-x-auto pb-2 space-x-2">
+                    <button
+                      onClick={() => handleCategoryChange('all')}
+                      className={`category-btn ${activeCategory === 'all' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}
+                    >
+                      {translations.all}
+                    </button>
+                    
+                    {CATEGORIES.map((category) => (
+                      <button
+                        key={category.id}
+                        onClick={() => handleCategoryChange(category.id)}
+                        className={`category-btn whitespace-nowrap ${activeCategory === category.id ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}
+                      >
+                        <span className="mr-1">{category.icon}</span>
+                        {category.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 
-        {/* Category Navigation */}
-        <div className="bg-white shadow rounded-lg p-2 mb-6 overflow-x-auto">
-          <div className="flex space-x-2">
-                        <button
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                activeCategory === 'all'
-                  ? 'bg-amber-800 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-              onClick={() => handleCategoryChange('all')}
-            >
-              All
-                        </button>
-            
-            {CATEGORIES.map((category) => (
-                        <button
-                key={category.id}
-                className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
-                  activeCategory === category.id
-                    ? 'bg-amber-800 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-                onClick={() => handleCategoryChange(category.id)}
-              >
-                <span className="mr-2">{category.icon}</span>
-                {category.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-        {/* Search Bar */}
-        <div className="bg-white shadow rounded-lg p-4 mb-6">
-          <input
-            type="text"
-            placeholder="Search menu items..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            value={searchQuery}
-            onChange={handleSearch}
-          />
-                  </div>
-                  
-        {/* Menu Items */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-          {isLoading ? (
-            Array(6).fill(null).map((_, i) => (
-              <div key={i} className="bg-white rounded-lg shadow-md p-4 animate-pulse">
-                <div className="h-32 bg-gray-200 rounded-md mb-4"></div>
-                <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
-                <div className="h-10 bg-gray-200 rounded"></div>
-              </div>
-            ))
-          ) : filteredItems.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <p className="text-gray-500">No menu items found matching your search.</p>
-            </div>
-          ) : (
-            filteredItems.map((item) => (
-              <div 
-                key={item.id} 
-                id={`menu-item-${item.id}`}
-                className="bg-white rounded-lg shadow-md overflow-hidden transition-colors cursor-pointer"
-                onClick={() => handleProductClick(item)}
-              >
-                <div className="h-40 bg-gray-200 relative overflow-hidden">
-                  {item.image_url ? (
-                    <img
-                      src={item.image_url}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                    />
+                <div className="flex items-center">
+                  <span className="text-gray-600 mr-2">{translations.table}:</span>
+                  {tableNumber ? (
+                    <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full font-medium text-sm">
+                      {tableNumber}
+                      <button 
+                        onClick={() => setShowTableSelector(true)}
+                        className="ml-2 text-amber-600 hover:text-amber-800"
+                      >
+                        ({translations.change})
+                      </button>
+                    </span>
                   ) : (
-                    <div className="flex items-center justify-center h-full bg-gray-100 text-gray-400">
-                      <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                  )}
-                  
-                  {item.is_new && (
-                    <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-md text-xs font-bold">
-                      NEW
-                    </div>
+                    <button 
+                      onClick={() => setShowTableSelector(true)}
+                      className="text-amber-600 hover:text-amber-800 font-medium"
+                    >
+                      {translations.select_table}
+                    </button>
                   )}
                 </div>
-                
-                <div className="p-4">
-                  <h3 className="text-lg font-medium text-amber-900">{item.name}</h3>
-                  <p className="text-gray-600 text-sm mt-1 h-12 overflow-hidden">
-                    {item.description}
-                  </p>
-                  
-                  <div className="flex items-center justify-between mt-4">
-                    <span className="text-lg font-bold text-amber-900">€{item.price.toFixed(2)}</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                        addToCart(item);
-                          }}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-800 hover:bg-amber-700"
-                        >
-                      Add to Cart
-            </button>
-          </div>
-                </div>
-              </div>
-            ))
-            )}
-          </div>
-          
-        {/* Cart Sidebar */}
-        {showCart && (
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-40 flex justify-end">
-            <div className="w-full max-w-md bg-white h-full shadow-xl flex flex-col">
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-amber-900">Your Order</h2>
-                <button
-                  onClick={() => setShowCart(false)}
-                  className="text-gray-400 hover:text-gray-500"
-                >
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
               </div>
               
-              <div className="flex-grow overflow-y-auto p-4">
-              {cart.length === 0 ? (
-                  <div className="text-center py-12">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <p className="mt-4 text-gray-500">Your cart is empty</p>
-                  <button
-                      onClick={() => setShowCart(false)}
-                      className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-800 hover:bg-amber-700"
-                  >
-                      Browse Menu
-                  </button>
+              {/* Search Bar */}
+              <div className="relative mb-6">
+                <input
+                  type="text"
+                  placeholder={translations.search_menu}
+                  value={searchQuery}
+                  onChange={handleSearch}
+                  className="w-full border border-gray-300 rounded-lg py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                />
+                <svg className="absolute left-3 top-3 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              
+              {/* Menu Items Grid */}
+              {isLoading ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-800"></div>
+                </div>
+              ) : filteredItems.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">No items found. Try a different search or category.</p>
                 </div>
               ) : (
-                  <div className="space-y-4">
-                    {cart.map((item) => (
-                      <div key={item.id} className="flex border-b border-gray-200 pb-4">
-                        <div className="h-16 w-16 bg-gray-200 rounded-md overflow-hidden flex-shrink-0">
-                          {item.image_url ? (
-                            <img
-                              src={item.image_url}
-                              alt={item.name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex items-center justify-center h-full bg-gray-100 text-gray-400">
-                              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                          </div>
-                            )}
-                          </div>
-                        
-                        <div className="ml-4 flex-grow">
-                          <h4 className="text-sm font-medium text-amber-900">{item.name}</h4>
-                          <p className="text-gray-500 text-sm">€{item.price.toFixed(2)}</p>
-                        </div>
-                        
-                        <div className="flex items-center">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateCartItemQuantity(item.id, item.quantity - 1);
-                            }}
-                            className="text-gray-500 hover:text-amber-800"
-                          >
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />
-                            </svg>
-                          </button>
-                          
-                          <span className="mx-2 text-gray-700">{item.quantity}</span>
-                          
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateCartItemQuantity(item.id, item.quantity + 1);
-                            }}
-                            className="text-gray-500 hover:text-amber-800"
-                          >
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                          </button>
-                        </div>
-          </div>
-        ))}
-                    
-                    {/* Table Number Input */}
-                    {!scannedTable && (
-                      <div className="mt-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Your Table
-                        </label>
-                        
-                        {tableNumber ? (
-                          <div className="flex items-center justify-between bg-gray-50 p-3 rounded-md border border-gray-300">
-                            <div>
-                              <span className="text-amber-800 font-medium">Table #{tableNumber}</span>
-                              {selectedTable && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                  {getLocationLabel(selectedTable.location)}
-                                  {selectedTable.description && ` • ${selectedTable.description}`}
-                                </p>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setShowTableSelector(true)}
-                              className="text-amber-800 hover:text-amber-900 text-sm"
-                            >
-                              Change
-                            </button>
-                          </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {filteredItems.map((item) => (
+                    <div 
+                      key={item.id} 
+                      className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                      onClick={() => handleProductClick(item)}
+                    >
+                      <div className="h-48 bg-gray-100 relative">
+                        {item.image_url ? (
+                          <img
+                            src={item.image_url}
+                            alt={item.name}
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => setShowTableSelector(true)}
-                            className="w-full flex justify-center py-2 px-4 border border-amber-800 rounded-md shadow-sm text-sm font-medium text-amber-800 bg-white hover:bg-amber-50"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          <div className="h-full w-full flex items-center justify-center text-gray-400">
+                            <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            Select Table
-                          </button>
+                          </div>
                         )}
-      </div>
-                    )}
-                    
-                    {/* Order Note */}
-                    <div className="mt-4">
-                      <label htmlFor="order-note" className="block text-sm font-medium text-gray-700">
-                        Order Notes (optional)
-                      </label>
-                      <textarea
-                        id="order-note"
-                        value={orderNote}
-                        onChange={(e) => setOrderNote(e.target.value)}
-                        rows="3"
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-amber-500 focus:border-amber-500"
-                        placeholder="Special instructions for your order..."
-                      ></textarea>
+                        
+                        {item.is_new && (
+                          <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-md text-xs font-bold">
+                            {translations.new}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="p-4">
+                        <h3 className="font-medium text-gray-800">{item.name}</h3>
+                        <p className="text-gray-500 text-sm mb-4 line-clamp-2">{item.description}</p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-lg font-bold text-amber-800">€{item.price.toFixed(2)}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addToCart(item);
+                            }}
+                            className="bg-amber-800 text-white px-3 py-1 rounded-md text-sm hover:bg-amber-700 transition-colors"
+                          >
+                            {translations.add_to_cart}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-              
-              {cart.length > 0 && (
-                <div className="border-t border-gray-200 p-4">
-                  <div className="flex justify-between py-2">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">€{subtotal.toFixed(2)}</span>
-                  </div>
-                  
-                  <div className="flex justify-between py-2 text-lg font-bold">
-                    <span>Total</span>
-                    <span>€{total.toFixed(2)}</span>
-                  </div>
-                  
-                  {!user && (
-                    <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-700">
-                      <p className="mb-2">Sign in to earn loyalty points with your purchase!</p>
-                      <Link href="/login" className="text-amber-800 font-medium hover:underline">
-                        Sign in now
-                      </Link>
-                    </div>
-                  )}
-                  
-                  {orderSuccess && (
-                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
-                      <p className="font-medium">Order placed successfully!</p>
-                      <p className="mt-1">You will be notified when your order is ready.</p>
-                      <p className="mt-2">Thank you for your order!</p>
-                    </div>
-                  )}
-                    
-                  <button 
-                    onClick={placeOrder}
-                    disabled={isSubmitting || cart.length === 0 || !tableNumber}
-                    className={`mt-4 w-full py-3 px-4 rounded-md shadow-sm text-white font-medium ${
-                      isSubmitting
-                        ? 'bg-gray-400 cursor-not-allowed'
-                        : !tableNumber
-                        ? 'bg-amber-300 cursor-not-allowed'
-                        : cart.length === 0
-                        ? 'bg-gray-400 cursor-not-allowed'
-                        : 'bg-amber-800 hover:bg-amber-700'
-                    }`}
-                  >
-                    {isSubmitting ? (
-                      <span className="flex items-center justify-center">
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Processing...
-                      </span>
-                    ) : !tableNumber ? 'Please Select a Table' : 'Place Order'}
-                  </button>
-                  
-                  {!tableNumber && (
-                    <p className="text-amber-600 text-xs mt-2 text-center">
-                      Please select a table before placing your order
-                    </p>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
           </div>
-        )}
-        
-        {/* Table Selection Modal */}
-        {showTableSelector && (
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] flex flex-col">
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-amber-900">Select Your Table</h2>
-                <button
-                  onClick={() => setShowTableSelector(false)}
-                  className="text-gray-400 hover:text-gray-500"
-                >
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                      </button>
-              </div>
+          
+          {/* Cart Section - 1/3 width on larger screens */}
+          <div className="w-full md:w-1/3">
+            <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">{translations.your_order}</h2>
               
-              <div className="p-4 flex-grow overflow-y-auto">
-                {isLoadingTables ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-800"></div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {tables.map((table) => (
-                      <div 
-                        key={table.id} 
-                        className={`bg-white border ${selectedTable?.id === table.id ? 'border-amber-500 ring-2 ring-amber-500' : 'border-gray-300'} rounded-lg cursor-pointer hover:border-amber-500 transition-colors`}
-                        onClick={() => handleSelectTable(table)}
+              {cart.length === 0 ? (
+                <div className="py-8 text-center">
+                  <p className="text-gray-500 mb-4">{translations.cart_empty}</p>
+                  <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+              ) : (
+                <div>
+                  {/* Table Selection */}
+                  <div className="border-b border-gray-200 pb-4 mb-4">
+                    <p className="text-gray-600 mb-1">{translations.your_table}</p>
+                    {tableNumber ? (
+                      <p className="text-lg font-medium flex items-center">
+                        {tableNumber}
+                        <button 
+                          onClick={() => setShowTableSelector(true)}
+                          className="ml-2 text-sm text-amber-600 hover:text-amber-800"
+                        >
+                          ({translations.change})
+                        </button>
+                      </p>
+                    ) : (
+                      <button 
+                        onClick={() => setShowTableSelector(true)}
+                        className="text-amber-600 hover:text-amber-800"
                       >
-                        <div className="p-3 border-b border-gray-200 flex justify-between items-center">
-                          <h3 className="text-lg font-medium text-amber-900">Table {table.table_number}</h3>
-                          <span className="bg-gray-100 text-gray-800 py-1 px-2 rounded-full text-xs">
-                            {table.seats} Seats
-                          </span>
+                        {translations.select_table}
+                      </button>
+                    )}
+                  </div>
+                    
+                  {/* Cart Items */}
+                  <div className="space-y-3 mb-6">
+                    {cart.map((item) => (
+                      <div key={item.id} className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <div className="flex border border-gray-200 rounded-md">
+                            <button
+                              onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
+                              className="px-2 py-1 text-gray-500 hover:text-gray-700"
+                              disabled={item.quantity <= 1}
+                            >
+                              -
+                            </button>
+                            <span className="px-2 py-1 text-gray-700">{item.quantity}</span>
+                            <button
+                              onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
+                              className="px-2 py-1 text-gray-500 hover:text-gray-700"
+                            >
+                              +
+                            </button>
+                          </div>
+                          <div className="ml-3">
+                            <p className="font-medium text-gray-800">{item.name}</p>
+                            <p className="text-gray-500 text-sm">€{item.price.toFixed(2)}</p>
+                          </div>
                         </div>
-                        
-                        <div className="p-3">
-                          <div className="flex justify-between mb-2">
-                            <div>
-                              <p className="text-sm text-gray-500">Location</p>
-                              <p className="text-sm font-medium">{getLocationLabel(table.location)}</p>
-                            </div>
-                            {table.description && (
-                              <div>
-                                <p className="text-sm text-gray-500">Description</p>
-                                <p className="text-sm font-medium">{table.description}</p>
-                              </div>
-                            )}
-                          </div>
-                          
-                          <div className="my-3 flex justify-center">
-                            <img 
-                              src={table.qr_code} 
-                              alt={`QR Code for Table ${table.table_number}`} 
-                              className="w-24 h-24 object-contain"
-                            />
-                          </div>
+                        <div className="text-right">
+                          <p className="font-medium text-gray-800">€{(item.price * item.quantity).toFixed(2)}</p>
+                          <button
+                            onClick={() => removeFromCart(item.id)}
+                            className="text-red-500 hover:text-red-700 text-sm"
+                          >
+                            Remove
+                          </button>
                         </div>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-              
-              <div className="p-4 border-t border-gray-200">
-                <div className="flex justify-end">
+                  
+                  {/* Order Notes */}
+                  <div className="mb-6">
+                    <label htmlFor="order-notes" className="block text-gray-600 mb-1 text-sm">
+                      {translations.order_notes}
+                    </label>
+                    <textarea
+                      id="order-notes"
+                      rows="2"
+                      value={orderNote}
+                      onChange={(e) => setOrderNote(e.target.value)}
+                      placeholder={translations.order_notes_placeholder}
+                      className="w-full border border-gray-300 rounded-md p-2 text-gray-800 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    ></textarea>
+                  </div>
+                  
+                  {/* Order Summary */}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">{translations.subtotal}</span>
+                      <span className="font-medium">€{subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="border-t border-gray-200 pt-2 flex justify-between text-base font-bold">
+                      <span>{translations.total}</span>
+                      <span>€{total.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Login for Loyalty */}
+                  {!user && (
+                    <div className="mt-4 p-3 bg-blue-50 rounded-md text-sm">
+                      <p className="text-blue-700">
+                        {translations.sign_in_loyalty} <Link href="/login" className="underline font-medium">{translations.sign_in_now}</Link>
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Place Order Button */}
                   <button
-                    type="button"
-                    onClick={() => setShowTableSelector(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 mr-3"
+                    onClick={placeOrder}
+                    disabled={isSubmitting || cart.length === 0}
+                    className={`w-full py-3 rounded-md font-medium text-white ${
+                      isSubmitting || cart.length === 0
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-amber-800 hover:bg-amber-700'
+                    } mt-6`}
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedTable) {
-                        setTableNumber(selectedTable.table_number.toString());
-                        setShowTableSelector(false);
-                      }
-                    }}
-                    disabled={!selectedTable}
-                    className={`px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white ${
-                      selectedTable ? 'bg-amber-800 hover:bg-amber-700' : 'bg-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    Confirm Selection
+                    {isSubmitting 
+                      ? <span className="flex items-center justify-center">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          {translations.processing}
+                        </span>
+                      : translations.place_order
+                    }
                   </button>
                 </div>
-              </div>
+              )}
             </div>
           </div>
-        )}
-
-        {/* Order Confirmation Notification */}
-        {orderNotification.show && (
-          <div className="fixed top-24 right-4 z-50 bg-green-100 border-l-4 border-green-500 rounded-md shadow-lg p-4 max-w-md">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-green-800">
-                  {orderNotification.message}
-                </p>
-              </div>
-              <div className="ml-auto pl-3">
-                <div className="-mx-1.5 -my-1.5">
-                  <button
-                    onClick={() => setOrderNotification({ show: false, message: '' })}
-                    className="inline-flex rounded-md p-1.5 text-green-500 hover:bg-green-200 focus:outline-none"
-                  >
-                    <span className="sr-only">Dismiss</span>
-                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </main>
 
+      {/* Table Selection Modal */}
+      {showTableSelector && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">{translations.select_your_table}</h3>
+              
+              {isLoadingTables ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-800"></div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {tables.map((table) => (
+                    <div 
+                      key={table.id}
+                      className={`border rounded-lg p-4 cursor-pointer hover:border-amber-500 ${
+                        selectedTable?.id === table.id ? 'border-amber-500 bg-amber-50' : 'border-gray-200'
+                      }`}
+                      onClick={() => setSelectedTable(table)}
+                    >
+                      <div className="flex justify-between">
+                        <span className="font-medium text-gray-800">Table {table.table_number}</span>
+                        <span className="text-gray-600 text-sm">{table.seats} {translations.seats}</span>
+                      </div>
+                      <div className="mt-1 text-gray-500 text-sm">
+                        <p><span className="text-gray-600">{translations.location}:</span> {getLocationLabel(table.location)}</p>
+                        {table.description && (
+                          <p><span className="text-gray-600">{translations.description}:</span> {table.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <div className="mt-6 flex justify-end space-x-3">
+                <button 
+                  onClick={() => setShowTableSelector(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  {translations.cancel}
+                </button>
+                <button 
+                  onClick={() => handleSelectTable(selectedTable)}
+                  disabled={!selectedTable}
+                  className={`px-4 py-2 rounded-md text-white ${
+                    !selectedTable ? 'bg-gray-400 cursor-not-allowed' : 'bg-amber-800 hover:bg-amber-700'
+                  }`}
+                >
+                  {translations.confirm_selection}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Order Success Modal */}
+      {orderSuccess && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6 text-center">
+              <div className="mb-4 mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">{translations.order_success}</h3>
+              <p className="text-gray-600 mb-6">{translations.order_notification}</p>
+              <p className="text-amber-800 font-medium mb-6">{translations.order_thank_you}</p>
+              <button
+                onClick={() => {
+                  setOrderSuccess(false);
+                  // Redirect to homepage or stay on order page with empty cart
+                  setCart([]);
+                  setOrderNote('');
+                }}
+                className="px-6 py-2 bg-amber-800 text-white rounded-md hover:bg-amber-700"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Order Notification Toast */}
+      {orderNotification.show && (
+        <div className="fixed bottom-4 right-4 bg-green-500 text-white py-2 px-4 rounded-md shadow-md animate-fadeIn">
+          {orderNotification.message}
+        </div>
+      )}
+      
       <Footer />
     </div>
   );
