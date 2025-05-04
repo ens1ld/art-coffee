@@ -28,10 +28,12 @@ export default function ProfilePage() {
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [loyaltyTransactions, setLoyaltyTransactions] = useState([]);
   const [giftCards, setGiftCards] = useState([]);
+  const [suggestedProducts, setSuggestedProducts] = useState([]);
   const [isLoading, setIsLoading] = useState({
     orders: true,
     loyalty: true,
-    giftCards: true
+    giftCards: true,
+    suggestions: true
   });
 
   // Client-side only code
@@ -298,6 +300,163 @@ export default function ProfilePage() {
     
     fetchGiftCards();
   }, [user]);
+
+  // Fetch suggested products based on order history and cookies
+  useEffect(() => {
+    async function fetchSuggestedProducts() {
+      if (!user) return;
+      
+      setIsLoading(prev => ({ ...prev, suggestions: true }));
+      
+      try {
+        // Get browsing history from cookies
+        const getCookieValues = () => {
+          if (typeof document === 'undefined') return [];
+          
+          const cookies = document.cookie.split(';');
+          const viewedProducts = cookies
+            .find(cookie => cookie.trim().startsWith('viewed_products='));
+            
+          if (!viewedProducts) return [];
+          
+          try {
+            return JSON.parse(decodeURIComponent(viewedProducts.split('=')[1]));
+          } catch (e) {
+            console.error('Error parsing viewed products cookie:', e);
+            return [];
+          }
+        };
+
+        // Get previous orders to analyze preferences
+        const getOrderPreferences = () => {
+          const categories = {};
+          const products = {};
+          
+          // Count occurrences of each category and product
+          orders.forEach(order => {
+            if (order.order_items) {
+              order.order_items.forEach(item => {
+                // Track categories
+                if (item.category) {
+                  categories[item.category] = (categories[item.category] || 0) + 1;
+                }
+                
+                // Track products
+                if (item.product_id) {
+                  products[item.product_id] = (products[item.product_id] || 0) + 1;
+                }
+              });
+            }
+          });
+          
+          // Sort categories by frequency
+          const preferredCategories = Object.entries(categories)
+            .sort((a, b) => b[1] - a[1])
+            .map(([category]) => category);
+            
+          return {
+            categories: preferredCategories,
+            products: Object.keys(products)
+          };
+        };
+        
+        // Get viewed products from cookies
+        const viewedProductIds = getCookieValues();
+        
+        // Get user preferences from orders
+        const preferences = getOrderPreferences();
+        
+        // Fetch recommended products from database
+        const { data: productsData, error: productsError } = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(12);
+          
+        if (productsError) throw productsError;
+        
+        // If no products found, use placeholder data
+        let products = productsData;
+        
+        if (!products || products.length === 0) {
+          // Create placeholder recommended products
+          const placeholderProducts = [
+            {
+              id: 'rec-1',
+              name: 'Caramel Macchiato',
+              description: 'Espresso with vanilla-flavored syrup and caramel',
+              price: 4.50,
+              category: 'coffee',
+              image_url: '/images/caramel-macchiato.jpg',
+              is_new: true
+            },
+            {
+              id: 'rec-2',
+              name: 'Blueberry Muffin',
+              description: 'Fresh muffin with wild blueberries',
+              price: 3.25,
+              category: 'pastries',
+              image_url: '/images/blueberry-muffin.jpg',
+              is_new: false
+            },
+            {
+              id: 'rec-3',
+              name: 'Chai Latte',
+              description: 'Black tea infused with cinnamon, clove and other spices',
+              price: 3.75,
+              category: 'tea',
+              image_url: '/images/chai-latte.jpg',
+              is_new: false
+            },
+            {
+              id: 'rec-4',
+              name: 'Avocado Toast',
+              description: 'Smashed avocado on toasted sourdough bread',
+              price: 8.50,
+              category: 'breakfast',
+              image_url: '/images/avocado-toast.jpg',
+              is_new: false
+            }
+          ];
+          
+          products = placeholderProducts;
+        }
+        
+        // Prioritize products based on preferences
+        const sortedProducts = [...products].sort((a, b) => {
+          // Give high priority to new products
+          if (a.is_new && !b.is_new) return -1;
+          if (!a.is_new && b.is_new) return 1;
+          
+          // Prioritize products in preferred categories
+          const aCategoryIndex = preferences.categories.indexOf(a.category);
+          const bCategoryIndex = preferences.categories.indexOf(b.category);
+          
+          if (aCategoryIndex !== -1 && bCategoryIndex === -1) return -1;
+          if (aCategoryIndex === -1 && bCategoryIndex !== -1) return 1;
+          if (aCategoryIndex !== -1 && bCategoryIndex !== -1) {
+            return aCategoryIndex - bCategoryIndex;
+          }
+          
+          // Default to most recent
+          return 0;
+        });
+        
+        // Limit to 4 suggestions
+        setSuggestedProducts(sortedProducts.slice(0, 4));
+      } catch (error) {
+        console.error('Error fetching suggested products:', error);
+        // Set default recommendations if error occurs
+        setSuggestedProducts([]);
+      } finally {
+        setIsLoading(prev => ({ ...prev, suggestions: false }));
+      }
+    }
+    
+    if (mounted && user && orders.length > 0) {
+      fetchSuggestedProducts();
+    }
+  }, [mounted, user, orders]);
 
   const handleRemoveFavorite = async (favoriteId) => {
     try {
@@ -602,6 +761,75 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
+              
+              {/* Personalized Recommendations */}
+              {suggestedProducts.length > 0 && (
+                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-amber-900">Recommended For You</h2>
+                    <Link 
+                      href="/order" 
+                      className="text-amber-800 hover:text-amber-600 text-sm font-medium"
+                    >
+                      View All Products
+                    </Link>
+                  </div>
+                  
+                  <p className="text-gray-600 mb-4">
+                    Based on your order history and browsing habits, we think you might like:
+                  </p>
+                  
+                  {isLoading.suggestions ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-800"></div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {suggestedProducts.map((product) => (
+                        <Link 
+                          key={product.id} 
+                          href={`/order?product=${product.id}`}
+                          className="block border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                        >
+                          <div className="h-32 bg-gray-100 relative">
+                            {product.image_url ? (
+                              <img
+                                src={product.image_url}
+                                alt={product.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center text-gray-400">
+                                <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                              </div>
+                            )}
+                            
+                            {product.is_new && (
+                              <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-md text-xs font-bold">
+                                NEW
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="p-3">
+                            <h3 className="font-medium text-amber-900">{product.name}</h3>
+                            <p className="text-gray-500 text-sm truncate">{product.description}</p>
+                            <p className="mt-2 font-bold text-amber-900">€{product.price.toFixed(2)}</p>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <div className="mt-4 p-3 bg-amber-50 rounded-md text-sm">
+                    <p className="text-amber-800">
+                      <span className="font-medium">Pro tip:</span> We update these recommendations based on your ordering habits and preferences to help you discover new favorites.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

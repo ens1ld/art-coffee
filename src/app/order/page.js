@@ -41,6 +41,12 @@ export default function OrderPage() {
   // QR code scanning
   const [scannedTable, setScannedTable] = useState(null);
   
+  // Table selection
+  const [tables, setTables] = useState([]);
+  const [isLoadingTables, setIsLoadingTables] = useState(false);
+  const [showTableSelector, setShowTableSelector] = useState(false);
+  const [selectedTable, setSelectedTable] = useState(null);
+  
   // Check for table param in URL (from QR code)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -62,6 +68,66 @@ export default function OrderPage() {
     setSubtotal(calculatedSubtotal);
     setTotal(calculatedSubtotal); // For now, no additional fees
   }, [cart]);
+  
+  // Fetch tables when table selector is shown
+  useEffect(() => {
+    async function fetchTables() {
+      if (!showTableSelector) return;
+      
+      try {
+        setIsLoadingTables(true);
+        const { data, error } = await supabase
+          .from('tables')
+          .select('*')
+          .order('table_number', { ascending: true });
+
+        if (error) throw error;
+
+        // Placeholder data if no tables
+        if (!data || data.length === 0) {
+          const placeholderTables = Array(12).fill(null).map((_, i) => ({
+            id: `placeholder-${i}`,
+            table_number: i + 1,
+            description: i < 6 ? 'Window table' : i < 10 ? 'Center table' : 'Bar seating',
+            seats: i < 6 ? 4 : i < 10 ? 6 : 2,
+            location: i < 8 ? 'main' : i < 10 ? 'terrace' : 'bar',
+            qr_code: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://art-coffee.vercel.app/order?table=${i + 1}`,
+            created_at: new Date().toISOString()
+          }));
+          setTables(placeholderTables);
+        } else {
+          setTables(data);
+        }
+      } catch (error) {
+        console.error('Error fetching tables:', error);
+      } finally {
+        setIsLoadingTables(false);
+      }
+    }
+
+    fetchTables();
+  }, [showTableSelector]);
+  
+  // Get location label for table
+  const getLocationLabel = (location) => {
+    switch (location) {
+      case 'main':
+        return 'Main Area';
+      case 'terrace':
+        return 'Terrace';
+      case 'bar':
+        return 'Bar Area';
+      default:
+        return location;
+    }
+  };
+  
+  // Handle table selection
+  const handleSelectTable = (table) => {
+    setSelectedTable(table);
+    setTableNumber(table.table_number.toString());
+    setShowTableSelector(false);
+  };
   
   // Fetch menu items
   useEffect(() => {
@@ -572,17 +638,41 @@ export default function OrderPage() {
                     {/* Table Number Input */}
                     {!scannedTable && (
                       <div className="mt-6">
-                        <label htmlFor="table-number" className="block text-sm font-medium text-gray-700">
-                          Table Number (optional)
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Your Table
                         </label>
-                        <input
-                          type="number"
-                          id="table-number"
-                          value={tableNumber}
-                          onChange={(e) => setTableNumber(e.target.value)}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-amber-500 focus:border-amber-500"
-                          placeholder="Enter your table number"
-                        />
+                        
+                        {tableNumber ? (
+                          <div className="flex items-center justify-between bg-gray-50 p-3 rounded-md border border-gray-300">
+                            <div>
+                              <span className="text-amber-800 font-medium">Table #{tableNumber}</span>
+                              {selectedTable && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {getLocationLabel(selectedTable.location)}
+                                  {selectedTable.description && ` • ${selectedTable.description}`}
+                                </p>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setShowTableSelector(true)}
+                              className="text-amber-800 hover:text-amber-900 text-sm"
+                            >
+                              Change
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setShowTableSelector(true)}
+                            className="w-full flex justify-center py-2 px-4 border border-amber-800 rounded-md shadow-sm text-sm font-medium text-amber-800 bg-white hover:bg-amber-50"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            Select Table
+                          </button>
+                        )}
                       </div>
                     )}
                     
@@ -652,6 +742,100 @@ export default function OrderPage() {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+        
+        {/* Table Selection Modal */}
+        {showTableSelector && (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] flex flex-col">
+              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                <h2 className="text-xl font-bold text-amber-900">Select Your Table</h2>
+                <button
+                  onClick={() => setShowTableSelector(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="p-4 flex-grow overflow-y-auto">
+                {isLoadingTables ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-800"></div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {tables.map((table) => (
+                      <div 
+                        key={table.id} 
+                        className={`bg-white border ${selectedTable?.id === table.id ? 'border-amber-500 ring-2 ring-amber-500' : 'border-gray-300'} rounded-lg cursor-pointer hover:border-amber-500 transition-colors`}
+                        onClick={() => handleSelectTable(table)}
+                      >
+                        <div className="p-3 border-b border-gray-200 flex justify-between items-center">
+                          <h3 className="text-lg font-medium text-amber-900">Table {table.table_number}</h3>
+                          <span className="bg-gray-100 text-gray-800 py-1 px-2 rounded-full text-xs">
+                            {table.seats} Seats
+                          </span>
+                        </div>
+                        
+                        <div className="p-3">
+                          <div className="flex justify-between mb-2">
+                            <div>
+                              <p className="text-sm text-gray-500">Location</p>
+                              <p className="text-sm font-medium">{getLocationLabel(table.location)}</p>
+                            </div>
+                            {table.description && (
+                              <div>
+                                <p className="text-sm text-gray-500">Description</p>
+                                <p className="text-sm font-medium">{table.description}</p>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="my-3 flex justify-center">
+                            <img 
+                              src={table.qr_code} 
+                              alt={`QR Code for Table ${table.table_number}`} 
+                              className="w-24 h-24 object-contain"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-4 border-t border-gray-200">
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowTableSelector(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 mr-3"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedTable) {
+                        setTableNumber(selectedTable.table_number.toString());
+                        setShowTableSelector(false);
+                      }
+                    }}
+                    disabled={!selectedTable}
+                    className={`px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white ${
+                      selectedTable ? 'bg-amber-800 hover:bg-amber-700' : 'bg-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    Confirm Selection
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
