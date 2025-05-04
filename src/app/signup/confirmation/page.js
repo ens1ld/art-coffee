@@ -76,7 +76,7 @@ export default function SignupConfirmationPage() {
           <div className="bg-white p-8 rounded-lg shadow-md mt-6">
             <div className="text-center space-y-6">
               <p className="text-gray-600">
-                We've sent a confirmation email to:
+                We&apos;ve sent a confirmation email to:
               </p>
               
               {email ? (
@@ -93,7 +93,7 @@ export default function SignupConfirmationPage() {
               
               <div className="border-t border-gray-200 pt-6">
                 <p className="text-gray-600 mb-4">
-                  Didn't receive the email?
+                  Didn&apos;t receive the email?
                 </p>
                 
                 <button
